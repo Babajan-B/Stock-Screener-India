@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useMemo, DragEvent } from 'react';
 import Navbar from '@/components/Navbar';
+import PageHero from '@/components/ui/page-hero';
 import {
   Upload, FileText, Download, RefreshCw,
   CheckCircle2, Briefcase,
@@ -292,32 +293,31 @@ export default function PortfolioPage() {
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
-    <div style={{ backgroundColor: '#0a0e1a', minHeight: '100vh', color: '#f9fafb' }}>
+    <div className="theme-page" style={{ color: '#f9fafb' }}>
       <Navbar />
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-
-        {/* Page header */}
-        <div className="flex items-start justify-between mb-8">
-          <div>
-            <h1 className="text-2xl font-bold flex items-center gap-3" style={{ color: '#f9fafb' }}>
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
-                <Briefcase size={18} className="text-white" />
-              </div>
-              Portfolio Analyser
-            </h1>
-            <p className="text-sm mt-1 ml-12" style={{ color: '#6b7280' }}>
-              Upload your broker&apos;s CSV export — get a buy / hold / sell signal for every holding
-            </p>
-          </div>
-          {summary.done > 0 && (
-            <button onClick={exportCSV}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border shrink-0"
-              style={{ borderColor: '#1f2937', color: '#9ca3af', backgroundColor: '#111827' }}>
-              <Download size={14} /> Export CSV
-            </button>
-          )}
-        </div>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <PageHero
+          badge="CSV workflow"
+          icon={<Briefcase className="h-4 w-4" />}
+          title="Analyse your full"
+          accent="Portfolio"
+          description="Upload a broker export and turn raw holdings into ranked buy, hold, and sell signals using the same dip-analysis framework across every line item."
+          meta={summary.total > 0 ? `${summary.done}/${summary.total} holdings analysed` : 'Supports Zerodha, Groww, Upstox, and generic CSV layouts'}
+          actions={[
+            ...(summary.done > 0
+              ? [{
+                  label: 'Export CSV',
+                  onClick: exportCSV,
+                  icon: <Download size={14} />,
+                }]
+              : []),
+            {
+              label: 'Open screener',
+              href: '/screener',
+              variant: 'secondary' as const,
+            },
+          ]}
+        />
 
         {/* ── UPLOAD ZONE (shown before any file is loaded) ── */}
         {results.length === 0 && (
@@ -329,10 +329,10 @@ export default function PortfolioPage() {
               onDragOver={e => { e.preventDefault(); setDragging(true); }}
               onDragLeave={() => setDragging(false)}
               onClick={() => fileRef.current?.click()}
-              className="rounded-2xl border-2 border-dashed p-12 flex flex-col items-center justify-center cursor-pointer transition-all"
+              className="theme-panel rounded-[28px] border-2 border-dashed p-12 flex flex-col items-center justify-center cursor-pointer transition-all"
               style={{
-                borderColor:     dragging ? '#6366f1' : '#1f2937',
-                backgroundColor: dragging ? 'rgba(99,102,241,0.06)' : '#111827',
+                borderColor: dragging ? '#6366f1' : 'rgba(255,255,255,0.1)',
+                backgroundColor: dragging ? 'rgba(99,102,241,0.08)' : 'rgba(15,23,42,0.72)',
               }}
             >
               <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
@@ -356,8 +356,7 @@ export default function PortfolioPage() {
             </div>
 
             {/* Info panel */}
-            <div className="rounded-2xl border p-6 flex flex-col gap-4"
-              style={{ backgroundColor: '#111827', borderColor: '#1f2937' }}>
+            <div className="theme-panel rounded-[28px] p-6 flex flex-col gap-4">
               <div className="flex items-center gap-2">
                 <FileText size={16} style={{ color: '#6366f1' }} />
                 <span className="font-semibold text-sm" style={{ color: '#f9fafb' }}>Supported formats</span>
@@ -400,7 +399,7 @@ export default function PortfolioPage() {
         {results.length > 0 && (
           <>
             {/* Progress + summary */}
-            <div className="rounded-2xl border p-5 mb-6" style={{ backgroundColor: '#111827', borderColor: '#1f2937' }}>
+            <div className="theme-panel rounded-[28px] p-5 mb-6">
               <div className="flex items-center justify-between mb-3 flex-wrap gap-3">
                 <div className="flex items-center gap-2 flex-wrap">
                   <FileText size={15} style={{ color: '#6b7280' }} />
@@ -419,7 +418,7 @@ export default function PortfolioPage() {
                   <button
                     onClick={() => { setResults([]); setFileName(''); setParseError(''); setSortKey('rec'); }}
                     className="text-xs px-3 py-1.5 rounded-lg border"
-                    style={{ borderColor: '#1f2937', color: '#6b7280', backgroundColor: '#0a0e1a' }}
+                    style={{ borderColor: '#1f2937', color: '#6b7280', backgroundColor: 'rgba(2,6,23,0.72)' }}
                   >
                     Upload new file
                   </button>
@@ -454,11 +453,11 @@ export default function PortfolioPage() {
             </div>
 
             {/* Table */}
-            <div className="rounded-2xl border overflow-hidden" style={{ borderColor: '#1f2937' }}>
+            <div className="theme-panel overflow-hidden rounded-[28px]">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr style={{ backgroundColor: '#111827' }}>
+                    <tr style={{ backgroundColor: 'rgba(15, 23, 42, 0.86)' }}>
                       <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider" style={{ color: '#6b7280' }}>Stock</th>
                       {hasQty   && <th className="px-4 py-3 text-right font-semibold text-xs uppercase tracking-wider" style={{ color: '#6b7280' }}>Qty</th>}
                       {hasPrice && <th className="px-4 py-3 text-right font-semibold text-xs uppercase tracking-wider" style={{ color: '#6b7280' }}>Avg Cost</th>}

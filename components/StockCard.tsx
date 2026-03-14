@@ -11,7 +11,7 @@ interface StockCardProps {
 
 export function StockCardSkeleton() {
   return (
-    <div className="stock-card rounded-2xl border p-5" style={{ backgroundColor: '#111827', borderColor: '#1f2937' }}>
+    <div className="theme-panel stock-card rounded-[28px] p-5">
       <div className="flex justify-between items-start mb-4">
         <div>
           <div className="shimmer h-5 w-20 mb-2" />
@@ -35,8 +35,7 @@ export default function StockCard({ stock }: StockCardProps) {
   return (
     <Link href={`/stock/${stock.symbol}`}>
       <div
-        className="stock-card rounded-2xl border p-5 block"
-        style={{ backgroundColor: '#111827', borderColor: '#1f2937' }}
+        className="theme-panel stock-card block rounded-[28px] p-5"
       >
         {/* Header */}
         <div className="flex justify-between items-start mb-3">

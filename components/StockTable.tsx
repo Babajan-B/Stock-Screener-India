@@ -24,10 +24,10 @@ const columns: { key: keyof StockListItem; label: string; align?: 'left' | 'righ
 
 export function StockTableSkeleton() {
   return (
-    <div className="rounded-2xl border overflow-hidden" style={{ borderColor: '#1f2937' }}>
+    <div className="theme-panel overflow-hidden rounded-[28px]">
       <table className="w-full">
         <thead>
-          <tr style={{ backgroundColor: '#111827' }}>
+          <tr style={{ backgroundColor: 'rgba(15, 23, 42, 0.86)' }}>
             {columns.map(c => (
               <th key={c.key} className="px-4 py-3 text-xs font-semibold tracking-wider" style={{ color: '#6b7280' }}>
                 {c.label}
@@ -53,11 +53,11 @@ export function StockTableSkeleton() {
 
 export default function StockTable({ stocks, sortKey, onSort, sortDir = 'asc' }: StockTableProps) {
   return (
-    <div className="rounded-2xl border overflow-hidden" style={{ borderColor: '#1f2937' }}>
+    <div className="theme-panel overflow-hidden rounded-[28px]">
       <div className="overflow-x-auto">
         <table className="w-full min-w-[700px]">
           <thead>
-            <tr style={{ backgroundColor: '#111827', borderBottom: '1px solid #1f2937' }}>
+            <tr style={{ backgroundColor: 'rgba(15, 23, 42, 0.86)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
               {columns.map(c => (
                 <th
                   key={c.key}

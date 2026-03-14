@@ -18,7 +18,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           rel="stylesheet"
         />
       </head>
-      <body className="min-h-screen" style={{ backgroundColor: '#0a0e1a' }}>
+      <body className="min-h-screen">
         {children}
       </body>
     </html>

@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import Navbar from '@/components/Navbar';
+import PageHero from '@/components/ui/page-hero';
 import { formatINR } from '@/lib/types';
 import {
   CheckCircle2, XCircle, HelpCircle, TrendingDown, TrendingUp,
@@ -86,7 +87,7 @@ function CheckCard({ id, check, expanded, onToggle }: {
 
   return (
     <div
-      className="rounded-2xl border transition-all overflow-hidden"
+      className="rounded-[28px] border transition-all overflow-hidden"
       style={{ backgroundColor: c.bg, borderColor: c.border }}
     >
       <button
@@ -266,41 +267,40 @@ export default function ScreenerPage() {
     : '#9ca3af';
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#0a0e1a' }}>
+    <div className="theme-page">
       <Navbar />
 
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-              style={{ background: 'linear-gradient(135deg, #ef4444, #f97316)' }}>
-              <TrendingDown size={20} className="text-white" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-extrabold" style={{ color: '#f9fafb' }}>
-                Stock Dip <span style={{ color: '#f97316' }}>Analyser</span>
-              </h1>
-              <p className="text-xs" style={{ color: '#9ca3af' }}>
-                Checklist for stocks down 30–40% from their 52-week high
-              </p>
-            </div>
-          </div>
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
+        <PageHero
+          badge="4-point framework"
+          icon={<TrendingDown className="h-4 w-4" />}
+          title="Run the stock dip"
+          accent="Analyser"
+          description="Check whether a falling stock is just cheaper or fundamentally weaker by testing profit growth, margins, promoter confidence, and EPS trend in one flow."
+          meta="Designed for names that are roughly 30–40% below their 52-week high"
+          actions={[
+            {
+              label: 'View rankings',
+              href: '/top-screener',
+            },
+            {
+              label: 'Back to dashboard',
+              href: '/#market-dashboard',
+              variant: 'secondary',
+            },
+          ]}
+        />
 
-          {/* Info banner */}
-          <div className="rounded-xl border px-4 py-3 mt-4 flex gap-3"
-            style={{ backgroundColor: 'rgba(249,115,22,0.06)', borderColor: 'rgba(249,115,22,0.2)' }}>
-            <Info size={15} className="shrink-0 mt-0.5" style={{ color: '#f97316' }} />
-            <p className="text-xs leading-relaxed" style={{ color: '#d1d5db' }}>
-              When a quality stock falls <strong style={{ color: '#f97316' }}>30–40%</strong> from its high, 
-              check these 4 parameters before buying the dip. All 4 passing = 
-              strong buy candidate.
-            </p>
-          </div>
+        <div className="theme-panel mb-8 flex gap-3 rounded-[28px] px-4 py-3">
+          <Info size={15} className="shrink-0 mt-0.5" style={{ color: '#f97316' }} />
+          <p className="text-xs leading-relaxed" style={{ color: '#d1d5db' }}>
+            When a quality stock falls <strong style={{ color: '#f97316' }}>30–40%</strong> from its high,
+            check these 4 parameters before buying the dip. All 4 passing = strong buy candidate.
+          </p>
         </div>
 
         {/* Search */}
-        <div className="rounded-2xl border p-5 mb-6" style={{ backgroundColor: '#111827', borderColor: '#1f2937' }}>
+        <div className="theme-panel rounded-[28px] p-5 mb-6">
           <label className="block text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: '#6b7280' }}>
             Enter Stock Symbol or Company Name
           </label>
@@ -309,8 +309,8 @@ export default function ScreenerPage() {
               <div
                 className="flex-1 flex items-center gap-2 px-4 rounded-xl border transition-all"
                 style={{
-                  backgroundColor: '#0a0e1a',
-                  borderColor: dropdownOpen ? '#f97316' : '#1f2937',
+                  backgroundColor: 'rgba(2,6,23,0.72)',
+                  borderColor: dropdownOpen ? '#f97316' : 'rgba(255,255,255,0.1)',
                   boxShadow: dropdownOpen ? '0 0 0 3px rgba(249,115,22,0.12)' : 'none',
                 }}
               >
@@ -359,8 +359,7 @@ export default function ScreenerPage() {
             {/* Autocomplete dropdown */}
             {dropdownOpen && suggestions.length > 0 && (
               <div
-                className="absolute top-full mt-2 left-0 right-0 rounded-xl border overflow-hidden z-50 shadow-2xl"
-                style={{ backgroundColor: '#111827', borderColor: '#1f2937' }}
+                className="theme-panel absolute top-full mt-2 left-0 right-0 rounded-2xl overflow-hidden z-50 shadow-2xl"
               >
                 {suggestions.map((s, i) => (
                   <button
@@ -425,7 +424,7 @@ export default function ScreenerPage() {
         {/* Loading skeleton */}
         {loading && (
           <div className="space-y-4">
-            <div className="rounded-2xl border p-6" style={{ backgroundColor: '#111827', borderColor: '#1f2937' }}>
+            <div className="theme-panel rounded-[28px] p-6">
               <div className="flex justify-between mb-4">
                 <div>
                   <div className="shimmer h-7 w-36 mb-2" />
@@ -436,7 +435,7 @@ export default function ScreenerPage() {
               <div className="shimmer h-4 w-full mt-3" />
             </div>
             {[1,2,3,4].map(i => (
-              <div key={i} className="rounded-2xl border p-5" style={{ backgroundColor: '#111827', borderColor: '#1f2937' }}>
+              <div key={i} className="theme-panel rounded-[28px] p-5">
                 <div className="flex items-center gap-4">
                   <div className="shimmer w-8 h-8 rounded-full" />
                   <div className="flex-1">
@@ -454,7 +453,7 @@ export default function ScreenerPage() {
         {result && !loading && (
           <div className="space-y-4">
             {/* Stock hero card */}
-            <div className="rounded-2xl border p-6" style={{ backgroundColor: '#111827', borderColor: '#1f2937' }}>
+            <div className="theme-panel rounded-[28px] p-6">
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
@@ -572,7 +571,7 @@ export default function ScreenerPage() {
               const inDipZone = result.dropFromHigh <= -30 && result.dropFromHigh >= -50;
               if (pct >= 75 && inDipZone) {
                 return (
-                  <div className="rounded-2xl border px-5 py-4 flex items-start gap-3"
+                  <div className="theme-panel rounded-[28px] px-5 py-4 flex items-start gap-3"
                     style={{ backgroundColor: 'rgba(34,197,94,0.08)', borderColor: 'rgba(34,197,94,0.3)' }}>
                     <CheckCircle2 size={20} style={{ color: '#22c55e' }} className="shrink-0 mt-0.5" />
                     <div>
@@ -589,7 +588,7 @@ export default function ScreenerPage() {
               }
               if (pct < 50 || !inDipZone) {
                 return (
-                  <div className="rounded-2xl border px-5 py-4 flex items-start gap-3"
+                  <div className="theme-panel rounded-[28px] px-5 py-4 flex items-start gap-3"
                     style={{ backgroundColor: 'rgba(239,68,68,0.08)', borderColor: 'rgba(239,68,68,0.25)' }}>
                     <XCircle size={20} style={{ color: '#ef4444' }} className="shrink-0 mt-0.5" />
                     <div>
@@ -607,7 +606,7 @@ export default function ScreenerPage() {
                 );
               }
               return (
-                <div className="rounded-2xl border px-5 py-4 flex items-start gap-3"
+                <div className="theme-panel rounded-[28px] px-5 py-4 flex items-start gap-3"
                   style={{ backgroundColor: 'rgba(234,179,8,0.08)', borderColor: 'rgba(234,179,8,0.25)' }}>
                   <AlertTriangle size={20} style={{ color: '#eab308' }} className="shrink-0 mt-0.5" />
                   <div>

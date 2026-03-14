@@ -68,10 +68,9 @@ export default function SearchBar() {
   return (
     <div ref={containerRef} className="relative w-full max-w-xl">
       <div
-        className="flex items-center gap-3 rounded-xl px-4 py-3 border transition-all"
+        className="theme-panel flex items-center gap-3 rounded-2xl px-4 py-3 transition-all"
         style={{
-          backgroundColor: '#111827',
-          borderColor: focused ? '#f97316' : '#1f2937',
+          borderColor: focused ? 'rgba(249,115,22,0.5)' : 'rgba(255,255,255,0.08)',
           boxShadow: focused ? '0 0 0 3px rgba(249,115,22,0.15)' : 'none',
         }}
       >
@@ -97,8 +96,7 @@ export default function SearchBar() {
 
       {focused && results.length > 0 && (
         <div
-          className="absolute top-full mt-2 left-0 right-0 rounded-xl border overflow-hidden z-50 shadow-2xl"
-          style={{ backgroundColor: '#111827', borderColor: '#1f2937' }}
+          className="theme-panel absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-2xl shadow-2xl"
         >
           {results.slice(0, 8).map((r, i) => (
             <button
@@ -124,8 +122,7 @@ export default function SearchBar() {
 
       {focused && query.length >= 2 && !loading && results.length === 0 && (
         <div
-          className="absolute top-full mt-2 left-0 right-0 rounded-xl border px-4 py-6 text-center z-50"
-          style={{ backgroundColor: '#111827', borderColor: '#1f2937' }}
+          className="theme-panel absolute left-0 right-0 top-full z-50 mt-2 rounded-2xl px-4 py-6 text-center"
         >
           <p className="text-sm" style={{ color: '#9ca3af' }}>No stocks found for &quot;{query}&quot;</p>
         </div>

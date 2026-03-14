@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Navbar from '@/components/Navbar';
+import PageHero from '@/components/ui/page-hero';
 import StockCard, { StockCardSkeleton } from '@/components/StockCard';
-import { StockListItem, formatINR } from '@/lib/types';
+import { StockListItem } from '@/lib/types';
 import { Star, Plus, X, RefreshCw, BookMarked } from 'lucide-react';
 
 const DEFAULT_WATCHLIST = ['RELIANCE', 'TCS', 'HDFCBANK', 'INFY', 'ITC', 'SBIN'];
@@ -120,34 +121,34 @@ export default function WatchlistPage() {
   };
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#0a0e1a' }}>
+    <div className="theme-page">
       <Navbar />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-          <div>
-            <h1 className="text-3xl font-extrabold mb-1" style={{ color: '#f9fafb' }}>
-              My <span style={{ color: '#f97316' }}>Watchlist</span>
-            </h1>
-            <p className="text-sm" style={{ color: '#9ca3af' }}>
-              Track your favourite stocks · {watchlist.length} stock{watchlist.length !== 1 ? 's' : ''}
-              {lastUpdated && ` · Updated ${lastUpdated.toLocaleTimeString('en-IN')}`}
-            </p>
-          </div>
-          <button
-            onClick={() => fetchStocks(watchlist, true)}
-            disabled={refreshing || !watchlist.length}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all"
-            style={{ backgroundColor: '#111827', border: '1px solid #1f2937', color: refreshing ? '#6b7280' : '#f9fafb' }}
-          >
-            <RefreshCw size={15} className={refreshing ? 'animate-spin' : ''} />
-            Refresh
-          </button>
-        </div>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <PageHero
+          badge="Personal workspace"
+          icon={<Star className="h-4 w-4" />}
+          title="Stay close to your"
+          accent="Watchlist"
+          description="Track the names you care about most with live price cards, instant refresh, and one-click links into the detailed stock view."
+          meta={`Tracking ${watchlist.length} stock${watchlist.length !== 1 ? 's' : ''}${lastUpdated ? ` · Updated ${lastUpdated.toLocaleTimeString('en-IN')}` : ''}`}
+          actions={[
+            {
+              label: refreshing ? 'Refreshing...' : 'Refresh prices',
+              onClick: () => fetchStocks(watchlist, true),
+              icon: <RefreshCw size={15} className={refreshing ? 'animate-spin' : ''} />,
+              disabled: refreshing || !watchlist.length,
+            },
+            {
+              label: 'Open screener',
+              href: '/screener',
+              variant: 'secondary',
+            },
+          ]}
+        />
 
         {/* Add stock */}
-        <div className="rounded-2xl border p-5 mb-8" style={{ backgroundColor: '#111827', borderColor: '#1f2937' }}>
+        <div className="theme-panel rounded-[28px] p-5 mb-8">
           <h2 className="text-sm font-semibold mb-3 flex items-center gap-2" style={{ color: '#9ca3af' }}>
             <Plus size={15} />
             Add Stock to Watchlist
@@ -161,8 +162,8 @@ export default function WatchlistPage() {
               placeholder="Enter symbol (e.g. WIPRO, ONGC)"
               className="flex-1 px-4 py-2.5 rounded-xl text-sm outline-none border transition-all"
               style={{
-                backgroundColor: '#0a0e1a',
-                borderColor: addError ? '#ef4444' : '#1f2937',
+                backgroundColor: 'rgba(2,6,23,0.72)',
+                borderColor: addError ? '#ef4444' : 'rgba(255,255,255,0.1)',
                 color: '#f9fafb',
               }}
             />
@@ -188,7 +189,7 @@ export default function WatchlistPage() {
             {Array.from({ length: watchlist.length || 4 }).map((_, i) => <StockCardSkeleton key={i} />)}
           </div>
         ) : watchlist.length === 0 ? (
-          <div className="text-center py-20">
+          <div className="theme-panel rounded-[28px] text-center py-20">
             <BookMarked size={48} className="mx-auto mb-4" style={{ color: '#374151' }} />
             <p className="text-lg font-semibold mb-2" style={{ color: '#6b7280' }}>Watchlist is empty</p>
             <p className="text-sm" style={{ color: '#374151' }}>Add stocks above to start tracking them</p>

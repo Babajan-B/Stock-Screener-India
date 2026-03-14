@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import Navbar from '@/components/Navbar';
+import { motion } from 'motion/react';
 import StockCard, { StockCardSkeleton } from '@/components/StockCard';
 import StockTable, { StockTableSkeleton } from '@/components/StockTable';
 import StatCard from '@/components/StatCard';
+import { Hero2 } from '@/components/ui/hero-2-1';
 import { StockListItem, POPULAR_STOCKS, formatINR } from '@/lib/types';
 import { RefreshCw, BarChart2, LayoutGrid, List, TrendingUp, TrendingDown, Activity } from 'lucide-react';
 
@@ -106,15 +107,21 @@ export default function HomePage() {
     !worst || s.percent_change < worst.percent_change ? s : worst, null);
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#0a0e1a' }}>
-      <Navbar />
+    <div className="theme-page">
+      <Hero2 />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main id="market-dashboard" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+        <motion.div
+          initial={{ opacity: 0, y: 28 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.3 }}
+          transition={{ duration: 0.55, ease: 'easeOut' }}
+          className="theme-page-hero theme-panel-strong mb-8 flex flex-col gap-4 px-6 py-8 sm:flex-row sm:items-center sm:justify-between"
+        >
           <div>
             <h1 className="text-3xl font-extrabold mb-1" style={{ color: '#f9fafb' }}>
-              Indian <span style={{ color: '#f97316' }}>Stock Market</span>
+              Live <span style={{ color: '#f97316' }}>Market Dashboard</span>
             </h1>
             <p className="text-sm flex items-center gap-2" style={{ color: '#9ca3af' }}>
               <span className="inline-flex items-center gap-1.5">
@@ -131,19 +138,25 @@ export default function HomePage() {
             disabled={refreshing}
             className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all"
             style={{
-              backgroundColor: '#111827',
-              border: '1px solid #1f2937',
+              backgroundColor: 'rgba(255,255,255,0.08)',
+              border: '1px solid rgba(255,255,255,0.12)',
               color: refreshing ? '#6b7280' : '#f9fafb',
             }}
           >
             <RefreshCw size={15} className={refreshing ? 'animate-spin' : ''} />
             {refreshing ? 'Refreshing...' : 'Refresh'}
           </button>
-        </div>
+        </motion.div>
 
         {/* Stats row */}
         {!loading && stocks.length > 0 && (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <motion.div
+            initial={{ opacity: 0, y: 22 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.2 }}
+            transition={{ duration: 0.5, ease: 'easeOut' }}
+            className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8"
+          >
             <StatCard
               label="Gainers"
               value={`${gainers}`}
@@ -178,13 +191,19 @@ export default function HomePage() {
                 icon={<Activity size={16} />}
               />
             )}
-          </div>
+          </motion.div>
         )}
 
         {/* Controls */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <motion.div
+          initial={{ opacity: 0, y: 22 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.2 }}
+          transition={{ duration: 0.5, delay: 0.05, ease: 'easeOut' }}
+          className="theme-panel mb-6 flex flex-col gap-4 rounded-[28px] p-4 sm:flex-row sm:items-center sm:justify-between"
+        >
           {/* Filter tabs */}
-          <div className="flex gap-1 p-1 rounded-xl" style={{ backgroundColor: '#111827' }}>
+          <div className="flex gap-1 p-1 rounded-xl" style={{ backgroundColor: 'rgba(2,6,23,0.5)' }}>
             {(['all', 'gainers', 'losers'] as const).map(f => (
               <button
                 key={f}
@@ -201,7 +220,7 @@ export default function HomePage() {
           </div>
 
           {/* View toggle */}
-          <div className="flex gap-1 p-1 rounded-xl" style={{ backgroundColor: '#111827' }}>
+          <div className="flex gap-1 p-1 rounded-xl" style={{ backgroundColor: 'rgba(2,6,23,0.5)' }}>
             <button
               onClick={() => setViewMode('grid')}
               className="p-2 rounded-lg transition-all"
@@ -217,11 +236,11 @@ export default function HomePage() {
               <List size={16} />
             </button>
           </div>
-        </div>
+        </motion.div>
 
         {/* Error */}
         {error && (
-          <div className="rounded-xl border px-5 py-4 mb-6" style={{ backgroundColor: 'rgba(239,68,68,0.08)', borderColor: 'rgba(239,68,68,0.25)', color: '#ef4444' }}>
+          <div className="theme-panel rounded-[28px] px-5 py-4 mb-6" style={{ borderColor: 'rgba(239,68,68,0.25)', color: '#ef4444' }}>
             {error}
           </div>
         )}
@@ -236,18 +255,31 @@ export default function HomePage() {
             <StockTableSkeleton />
           )
         ) : sortedStocks.length === 0 ? (
-          <div className="text-center py-20">
+          <div className="theme-panel rounded-[28px] text-center py-20">
             <BarChart2 size={48} className="mx-auto mb-4" style={{ color: '#374151' }} />
             <p className="text-lg font-semibold" style={{ color: '#6b7280' }}>No stocks to display</p>
           </div>
         ) : viewMode === 'grid' ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.1 }}
+            transition={{ duration: 0.55, ease: 'easeOut' }}
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+          >
             {sortedStocks.map(stock => (
               <StockCard key={stock.ticker || stock.symbol} stock={stock} />
             ))}
-          </div>
+          </motion.div>
         ) : (
-          <StockTable stocks={sortedStocks} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.1 }}
+            transition={{ duration: 0.55, ease: 'easeOut' }}
+          >
+            <StockTable stocks={sortedStocks} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+          </motion.div>
         )}
 
         {/* Footer note */}

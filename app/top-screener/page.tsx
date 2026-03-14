@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Navbar from '@/components/Navbar';
+import PageHero from '@/components/ui/page-hero';
 import { RefreshCw, Trophy, TrendingDown, ChevronDown, ChevronUp } from 'lucide-react';
 
 // ─── types ────────────────────────────────────────────────────────────────────
@@ -81,37 +82,33 @@ export default function TopScreenerPage() {
   const rows = cache[activeCap] ?? [];
 
   return (
-    <div style={{ backgroundColor: '#0a0e1a', minHeight: '100vh', color: '#f9fafb' }}>
+    <div className="theme-page" style={{ color: '#f9fafb' }}>
       <Navbar />
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-
-        {/* Header */}
-        <div className="flex items-start justify-between flex-wrap gap-4 mb-8">
-          <div>
-            <h1 className="text-2xl font-bold flex items-center gap-3" style={{ color: '#f9fafb' }}>
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                style={{ background: 'linear-gradient(135deg, #f97316, #ef4444)' }}>
-                <Trophy size={18} className="text-white" />
-              </div>
-              Top Screener
-            </h1>
-            <p className="text-sm mt-1 ml-12" style={{ color: '#6b7280' }}>
-              Best-scoring stocks by market cap — ranked by our 4-point screener
-            </p>
-          </div>
-          <button
-            onClick={() => fetchCap(activeCap, true)}
-            disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border shrink-0 transition-opacity"
-            style={{ borderColor: '#1f2937', color: '#9ca3af', backgroundColor: '#111827', opacity: loading ? 0.5 : 1 }}
-          >
-            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-            Refresh
-          </button>
-        </div>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <PageHero
+          badge="Cap-wise rankings"
+          icon={<Trophy className="h-4 w-4" />}
+          title="See the highest scoring"
+          accent="Rankings"
+          description="Compare large, mid, small, and micro-cap names by screener score and 52-week drawdown so the strongest setups surface faster."
+          meta={`${capMeta.label} view${lastFetched[activeCap] ? ` · Refreshed ${new Date(lastFetched[activeCap]!).toLocaleTimeString('en-IN')}` : ''}`}
+          actions={[
+            {
+              label: loading ? 'Refreshing...' : 'Refresh rankings',
+              onClick: () => fetchCap(activeCap, true),
+              icon: <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />,
+              disabled: loading,
+            },
+            {
+              label: 'Open screener',
+              href: '/screener',
+              variant: 'secondary',
+            },
+          ]}
+        />
 
         {/* Cap tabs */}
-        <div className="flex flex-wrap gap-2 mb-6">
+        <div className="theme-panel mb-6 flex flex-wrap gap-2 rounded-[28px] p-3">
           {CAPS.map(cap => (
             <button
               key={cap.key}
@@ -135,7 +132,7 @@ export default function TopScreenerPage() {
         {loading && rows.length === 0 && (
           <div className="space-y-2">
             {Array.from({ length: 10 }).map((_, i) => (
-              <div key={i} className="h-16 rounded-xl animate-pulse" style={{ backgroundColor: '#111827' }} />
+              <div key={i} className="theme-panel h-16 rounded-[24px] animate-pulse" />
             ))}
           </div>
         )}
@@ -154,10 +151,10 @@ export default function TopScreenerPage() {
               ))}
             </div>
 
-            <div className="rounded-2xl border overflow-hidden" style={{ borderColor: '#1f2937' }}>
+            <div className="theme-panel overflow-hidden rounded-[28px]">
               {/* Table header */}
               <div className="grid items-center text-xs font-semibold uppercase tracking-wider px-4 py-3 border-b"
-                style={{ backgroundColor: '#111827', borderColor: '#1f2937', color: '#6b7280',
+                style={{ backgroundColor: 'rgba(15, 23, 42, 0.86)', borderColor: '#1f2937', color: '#6b7280',
                   gridTemplateColumns: '2rem 1fr 6rem 6rem 6rem 5.5rem 5rem 3rem' }}>
                 <span className="text-center">#</span>
                 <span>Stock</span>
@@ -269,7 +266,7 @@ export default function TopScreenerPage() {
                     {/* Expanded detail */}
                     {isOpen && (
                       <div className="px-4 pb-4 grid sm:grid-cols-2 lg:grid-cols-4 gap-3 border-t"
-                        style={{ borderColor: '#1f2937', backgroundColor: '#111827' }}>
+                        style={{ borderColor: '#1f2937', backgroundColor: 'rgba(15,23,42,0.72)' }}>
                         {checks.map((c, ci) => (
                           <div key={ci} className="rounded-xl p-3 border"
                             style={{

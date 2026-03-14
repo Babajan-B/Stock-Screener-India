@@ -17,8 +17,7 @@ export default function StatCard({ label, value, sub, trend, icon, accent = '#f9
 
   return (
     <div
-      className="rounded-2xl border p-5 flex flex-col gap-2"
-      style={{ backgroundColor: '#111827', borderColor: '#1f2937' }}
+      className="theme-panel rounded-[28px] p-5 flex flex-col gap-2"
     >
       <div className="flex items-center justify-between">
         <p className="text-xs font-medium uppercase tracking-wider" style={{ color: '#6b7280' }}>

@@ -79,14 +79,14 @@ export default function StockDetailPage() {
     : 50;
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#0a0e1a' }}>
+    <div className="theme-page">
       <Navbar />
 
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
         {/* Back */}
         <button
           onClick={() => router.back()}
-          className="flex items-center gap-2 text-sm mb-6 transition-colors hover:text-orange-400"
+          className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm transition-colors hover:text-orange-400"
           style={{ color: '#9ca3af' }}
         >
           <ArrowLeft size={16} />
@@ -96,7 +96,7 @@ export default function StockDetailPage() {
         {loading ? (
           <StockDetailSkeleton />
         ) : error ? (
-          <div className="rounded-2xl border px-6 py-10 text-center" style={{ backgroundColor: '#111827', borderColor: '#1f2937' }}>
+          <div className="theme-panel rounded-[28px] px-6 py-10 text-center">
             <Activity size={40} className="mx-auto mb-4" style={{ color: '#374151' }} />
             <p className="text-lg font-semibold mb-2" style={{ color: '#f9fafb' }}>Stock Not Found</p>
             <p className="text-sm mb-6" style={{ color: '#9ca3af' }}>{error}</p>
@@ -111,7 +111,7 @@ export default function StockDetailPage() {
         ) : (
           <>
             {/* Exchange tabs */}
-            <div className="flex gap-2 mb-6">
+            <div className="theme-panel mb-6 flex gap-2 rounded-[28px] p-3">
               {(['NSE', 'BSE'] as const).map(ex => {
                 const available = ex === 'NSE' ? !!nseData : !!bseData;
                 return (
@@ -140,7 +140,7 @@ export default function StockDetailPage() {
                   onClick={() => fetchData(true)}
                   disabled={refreshing}
                   className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all"
-                  style={{ backgroundColor: '#111827', border: '1px solid #1f2937', color: refreshing ? '#6b7280' : '#9ca3af' }}
+                  style={{ backgroundColor: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: refreshing ? '#6b7280' : '#9ca3af' }}
                 >
                   <RefreshCw size={13} className={refreshing ? 'animate-spin' : ''} />
                   Refresh
@@ -151,7 +151,7 @@ export default function StockDetailPage() {
             {d && (
               <>
                 {/* Hero Card */}
-                <div className="rounded-2xl border p-6 mb-6" style={{ backgroundColor: '#111827', borderColor: '#1f2937' }}>
+                <div className="theme-page-hero theme-panel-strong rounded-[32px] p-6 mb-6">
                   <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                     <div>
                       <div className="flex items-center gap-3 mb-1">
@@ -325,7 +325,7 @@ function DetailSection({
   items: { label: string; value: string; color?: string }[];
 }) {
   return (
-    <div className="rounded-2xl border overflow-hidden" style={{ backgroundColor: '#111827', borderColor: '#1f2937' }}>
+    <div className="theme-panel overflow-hidden rounded-[28px]">
       <div className="flex items-center gap-2 px-5 py-4 border-b" style={{ borderColor: '#1f2937' }}>
         <span style={{ color: '#f97316' }}>{icon}</span>
         <h3 className="font-semibold text-sm" style={{ color: '#f9fafb' }}>{title}</h3>
@@ -347,7 +347,7 @@ function DetailSection({
 function StockDetailSkeleton() {
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border p-6" style={{ backgroundColor: '#111827', borderColor: '#1f2937' }}>
+      <div className="theme-panel rounded-[28px] p-6">
         <div className="flex justify-between">
           <div>
             <div className="shimmer h-8 w-32 mb-3" />
@@ -366,7 +366,7 @@ function StockDetailSkeleton() {
       </div>
       <div className="grid grid-cols-2 gap-6">
         {[1, 2, 3, 4].map(i => (
-          <div key={i} className="rounded-2xl border p-5" style={{ backgroundColor: '#111827', borderColor: '#1f2937' }}>
+          <div key={i} className="theme-panel rounded-[28px] p-5">
             <div className="shimmer h-5 w-32 mb-4" />
             {Array.from({ length: 5 }).map((_, j) => (
               <div key={j} className="flex justify-between py-2 border-t" style={{ borderColor: '#1f2937' }}>
