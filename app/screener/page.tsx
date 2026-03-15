@@ -23,6 +23,14 @@ interface CheckResult {
   value: string;
 }
 
+interface AdvancedMetricResult {
+  pass: boolean | null;
+  label: string;
+  detail: string;
+  value: string;
+  benchmark: string;
+}
+
 interface ScreenerResult {
   status: string;
   symbol: string;
@@ -45,6 +53,15 @@ interface ScreenerResult {
   };
   passCount: number;
   totalChecks: number;
+  advancedMetrics: {
+    returnOnEquity: AdvancedMetricResult;
+    debtToEquity: AdvancedMetricResult;
+    revenueGrowth: AdvancedMetricResult;
+    freeCashFlow: AdvancedMetricResult;
+    currentRatio: AdvancedMetricResult;
+  };
+  advancedPassCount: number;
+  advancedTotalChecks: number;
   timestamp: string;
   message?: string;
 }
@@ -67,6 +84,14 @@ const CHECK_DESCRIPTIONS = {
   promoterStakeStable: 'Promoter/insider holding should be meaningful (>30%), showing confidence in the business',
   epsIncreasing: 'Earnings Per Share should show an increasing trend across recent quarters',
 };
+
+const ADVANCED_METRIC_ORDER = [
+  'returnOnEquity',
+  'debtToEquity',
+  'revenueGrowth',
+  'freeCashFlow',
+  'currentRatio',
+] as const;
 
 function CheckCard({ id, check, expanded, onToggle }: {
   id: string;
@@ -564,6 +589,69 @@ export default function ScreenerPage() {
                 onToggle={() => toggleExpand(id)}
               />
             ))}
+
+            <div className="flex items-center gap-3 px-1 pt-2">
+              <div className="h-px flex-1" style={{ backgroundColor: '#1f2937' }} />
+              <p className="text-xs font-bold uppercase tracking-widest" style={{ color: '#6b7280' }}>
+                Advanced Quality Metrics
+              </p>
+              <div className="h-px flex-1" style={{ backgroundColor: '#1f2937' }} />
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {ADVANCED_METRIC_ORDER.map((key) => {
+                const metric = result.advancedMetrics[key];
+                const state = metric.pass === null ? 'unknown' : metric.pass ? 'pass' : 'fail';
+                const palette = state === 'pass'
+                  ? { border: 'rgba(34,197,94,0.22)', bg: 'rgba(34,197,94,0.07)', text: '#22c55e' }
+                  : state === 'fail'
+                    ? { border: 'rgba(239,68,68,0.22)', bg: 'rgba(239,68,68,0.07)', text: '#ef4444' }
+                    : { border: 'rgba(234,179,8,0.22)', bg: 'rgba(234,179,8,0.07)', text: '#eab308' };
+
+                return (
+                  <div
+                    key={key}
+                    className="rounded-[24px] border p-4"
+                    style={{ borderColor: palette.border, backgroundColor: palette.bg }}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold" style={{ color: '#f9fafb' }}>
+                          {metric.label}
+                        </p>
+                        <p className="mt-1 text-xs" style={{ color: '#6b7280' }}>
+                          Benchmark {metric.benchmark}
+                        </p>
+                      </div>
+                      <span
+                        className="rounded-full px-2.5 py-1 text-[11px] font-bold"
+                        style={{ backgroundColor: `${palette.text}22`, color: palette.text }}
+                      >
+                        {state === 'pass' ? 'PASS' : state === 'fail' ? 'WATCH' : 'N/A'}
+                      </span>
+                    </div>
+                    <p className="mt-4 text-xl font-black" style={{ color: '#f9fafb' }}>
+                      {metric.value}
+                    </p>
+                    <p className="mt-2 text-xs leading-relaxed" style={{ color: '#9ca3af' }}>
+                      {metric.detail}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="theme-panel rounded-[28px] px-5 py-4 flex items-start gap-3">
+              <Info size={18} style={{ color: '#f97316' }} className="shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold text-sm" style={{ color: '#f9fafb' }}>
+                  Advanced quality score
+                </p>
+                <p className="text-xs mt-1" style={{ color: '#9ca3af' }}>
+                  {result.advancedPassCount}/{result.advancedTotalChecks} advanced metrics passed. Use this as a second layer after the 4-point dip checklist, not as a replacement for it.
+                </p>
+              </div>
+            </div>
 
             {/* Verdict banner */}
             {(() => {

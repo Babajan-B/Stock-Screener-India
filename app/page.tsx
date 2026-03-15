@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'motion/react';
 import StockCard, { StockCardSkeleton } from '@/components/StockCard';
@@ -7,7 +8,8 @@ import StockTable, { StockTableSkeleton } from '@/components/StockTable';
 import StatCard from '@/components/StatCard';
 import { Hero2 } from '@/components/ui/hero-2-1';
 import { StockListItem, POPULAR_STOCKS, formatINR } from '@/lib/types';
-import { RefreshCw, BarChart2, LayoutGrid, List, TrendingUp, TrendingDown, Activity } from 'lucide-react';
+import { readRecentlyViewed } from '@/lib/recentlyViewed';
+import { RefreshCw, BarChart2, LayoutGrid, List, TrendingUp, TrendingDown, Activity, Landmark, History } from 'lucide-react';
 
 type ViewMode = 'grid' | 'table';
 type SortKey = keyof StockListItem;
@@ -23,6 +25,8 @@ const SECTORS_PICKS: { [sector: string]: string[] } = {
 
 export default function HomePage() {
   const [stocks, setStocks] = useState<StockListItem[]>([]);
+  const [indices, setIndices] = useState<StockListItem[]>([]);
+  const [recentlyViewed, setRecentlyViewed] = useState<StockListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -64,12 +68,52 @@ export default function HomePage() {
     }
   }, []);
 
+  const fetchIndices = useCallback(async () => {
+    try {
+      const res = await fetch('/api/stock/list?symbols=%5ENSEI,%5EBSESN&res=num');
+      const data = await res.json();
+      setIndices(data.stocks || []);
+    } catch {
+      setIndices([]);
+    }
+  }, []);
+
+  const fetchRecentlyViewed = useCallback(async () => {
+    const symbols = readRecentlyViewed();
+    if (!symbols.length) {
+      setRecentlyViewed([]);
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/stock/list?symbols=${symbols.join(',')}&res=num`);
+      const data = await res.json();
+      setRecentlyViewed(data.stocks || []);
+    } catch {
+      setRecentlyViewed([]);
+    }
+  }, []);
+
+  const refreshAll = useCallback(async () => {
+    await Promise.all([
+      fetchStocks(true),
+      fetchIndices(),
+      fetchRecentlyViewed(),
+    ]);
+  }, [fetchIndices, fetchRecentlyViewed, fetchStocks]);
+
   useEffect(() => {
     fetchStocks();
+    fetchIndices();
+    fetchRecentlyViewed();
     // Auto-refresh every 60s
-    const interval = setInterval(() => fetchStocks(true), 60000);
+    const interval = setInterval(() => {
+      fetchStocks(true);
+      fetchIndices();
+      fetchRecentlyViewed();
+    }, 60000);
     return () => clearInterval(interval);
-  }, [fetchStocks]);
+  }, [fetchIndices, fetchRecentlyViewed, fetchStocks]);
 
   // Sort & filter
   const handleSort = (key: SortKey) => {
@@ -134,7 +178,7 @@ export default function HomePage() {
             </p>
           </div>
           <button
-            onClick={() => fetchStocks(true)}
+            onClick={refreshAll}
             disabled={refreshing}
             className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all"
             style={{
@@ -191,6 +235,122 @@ export default function HomePage() {
                 icon={<Activity size={16} />}
               />
             )}
+          </motion.div>
+        )}
+
+        {!!indices.length && (
+          <motion.div
+            initial={{ opacity: 0, y: 22 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.2 }}
+            transition={{ duration: 0.5, delay: 0.03, ease: 'easeOut' }}
+            className="theme-panel mb-8 rounded-[28px] p-5"
+          >
+            <div className="mb-5 flex items-center gap-2">
+              <Landmark size={16} style={{ color: '#f97316' }} />
+              <h2 className="text-sm font-semibold" style={{ color: '#f9fafb' }}>
+                India Index Pulse
+              </h2>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              {indices.map((index) => {
+                const isUp = index.change >= 0;
+                const label = index.symbol === '^NSEI' ? 'NIFTY 50' : index.symbol === '^BSESN' ? 'SENSEX' : index.symbol;
+                return (
+                  <div key={index.symbol} className="rounded-[24px] border border-white/10 bg-white/5 p-5">
+                    <p className="text-xs uppercase tracking-[0.2em]" style={{ color: '#6b7280' }}>
+                      Index
+                    </p>
+                    <div className="mt-2 flex items-center justify-between gap-4">
+                      <div>
+                        <h3 className="text-2xl font-black" style={{ color: '#f9fafb' }}>{label}</h3>
+                        <p className="mt-1 text-sm" style={{ color: '#9ca3af' }}>
+                          {formatINR(index.last_price)}
+                        </p>
+                      </div>
+                      <span
+                        className="rounded-full px-3 py-1 text-xs font-semibold"
+                        style={{
+                          backgroundColor: isUp ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)',
+                          color: isUp ? '#22c55e' : '#ef4444',
+                        }}
+                      >
+                        {isUp ? '+' : ''}
+                        {index.percent_change.toFixed(2)}%
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+
+        <motion.div
+          initial={{ opacity: 0, y: 22 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.2 }}
+          transition={{ duration: 0.5, delay: 0.04, ease: 'easeOut' }}
+          className="theme-panel mb-8 rounded-[28px] p-5"
+        >
+          <div className="mb-5 flex items-center justify-between gap-4">
+            <div>
+              <h2 className="text-sm font-semibold" style={{ color: '#f9fafb' }}>
+                Sector Watch
+              </h2>
+              <p className="mt-1 text-sm" style={{ color: '#9ca3af' }}>
+                Quick shortcuts into key Indian market groups.
+              </p>
+            </div>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {Object.entries(SECTORS_PICKS).map(([sector, picks]) => (
+              <div key={sector} className="rounded-[24px] border border-white/10 bg-white/5 p-4">
+                <p className="text-xs uppercase tracking-[0.2em]" style={{ color: '#6b7280' }}>
+                  Sector
+                </p>
+                <h3 className="mt-1 text-lg font-bold" style={{ color: '#f9fafb' }}>{sector}</h3>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {picks.map((pick) => (
+                    <Link
+                      key={pick}
+                      href={`/stock/${pick}`}
+                      className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold transition hover:border-orange-400/40 hover:text-orange-300"
+                      style={{ color: '#d1d5db' }}
+                    >
+                      {pick}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+
+        {!!recentlyViewed.length && (
+          <motion.div
+            initial={{ opacity: 0, y: 22 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.2 }}
+            transition={{ duration: 0.5, delay: 0.045, ease: 'easeOut' }}
+            className="theme-panel mb-8 rounded-[28px] p-5"
+          >
+            <div className="mb-5 flex items-center gap-2">
+              <History size={16} style={{ color: '#f97316' }} />
+              <div>
+                <h2 className="text-sm font-semibold" style={{ color: '#f9fafb' }}>
+                  Recently Viewed
+                </h2>
+                <p className="mt-1 text-sm" style={{ color: '#9ca3af' }}>
+                  Jump back into the stocks you checked most recently.
+                </p>
+              </div>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              {recentlyViewed.map((stock) => (
+                <StockCard key={stock.ticker || stock.symbol} stock={stock} />
+              ))}
+            </div>
           </motion.div>
         )}
 

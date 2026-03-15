@@ -160,17 +160,17 @@ const Hero2 = () => {
           <motion.h1
             {...fadeUp}
             transition={{ duration: 0.65, delay: 0.08, ease: "easeOut" }}
-            className="mx-auto max-w-5xl text-5xl font-bold leading-tight text-white md:text-6xl lg:text-7xl"
+            className="mx-auto max-w-4xl text-4xl font-bold leading-tight text-white md:text-5xl lg:text-6xl"
           >
-            Find stronger Indian stocks before the rebound becomes obvious
+            Find stronger Indian stocks early
           </motion.h1>
           <motion.p
             {...fadeUp}
             transition={{ duration: 0.65, delay: 0.16, ease: "easeOut" }}
             className="mx-auto mt-6 max-w-3xl text-lg text-gray-300"
           >
-            Live NSE and BSE pricing, dip analysis, portfolio checks, and
-            cap-wise rankings in one workflow built for retail investors.
+            Track live NSE and BSE prices, run dip analysis, and rank
+            opportunities from one focused workflow built for Indian investors.
           </motion.p>
 
           <motion.div

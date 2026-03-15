@@ -4,19 +4,27 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
+import StatCard from '@/components/StatCard';
+import PriceHistoryChart from '@/components/PriceHistoryChart';
+import AlertManager from '@/components/AlertManager';
 import {
   StockResponse,
+  HistoricalResponse,
+  NewsItem,
   formatINR,
   formatMarketCap,
   formatVolume,
   formatNumber,
   getChangeColor,
 } from '@/lib/types';
+import { pushRecentlyViewed } from '@/lib/recentlyViewed';
 import {
   TrendingUp, TrendingDown, RefreshCw, ArrowLeft,
   Building2, DollarSign, Activity, BarChart3,
-  Calendar, Layers, Zap
+  Calendar, Layers, Zap, CandlestickChart, Landmark, Percent
 } from 'lucide-react';
+
+const HISTORY_RANGES = ['1mo', '3mo', '6mo', '1y', '5y'] as const;
 
 export default function StockDetailPage() {
   const params = useParams();
@@ -30,6 +38,12 @@ export default function StockDetailPage() {
   const [activeExchange, setActiveExchange] = useState<'NSE' | 'BSE'>('NSE');
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [historyRange, setHistoryRange] = useState<(typeof HISTORY_RANGES)[number]>('6mo');
+  const [history, setHistory] = useState<HistoricalResponse | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [screenerScore, setScreenerScore] = useState<{ passCount: number; totalChecks: number } | null>(null);
+  const [news, setNews] = useState<NewsItem[]>([]);
+  const [newsLoading, setNewsLoading] = useState(true);
 
   const fetchData = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -58,10 +72,71 @@ export default function StockDetailPage() {
   }, [symbol]);
 
   useEffect(() => {
+    pushRecentlyViewed(symbol);
+  }, [symbol]);
+
+  useEffect(() => {
     fetchData();
     const interval = setInterval(() => fetchData(true), 60000);
     return () => clearInterval(interval);
   }, [fetchData]);
+
+  useEffect(() => {
+    async function fetchHistory() {
+      setHistoryLoading(true);
+
+      try {
+        const ticker = `${symbol}.${activeExchange === 'NSE' ? 'NS' : 'BO'}`;
+        const res = await fetch(`/api/historical?symbol=${encodeURIComponent(ticker)}&range=${historyRange}`);
+        const data = await res.json();
+        setHistory(data.status === 'success' ? data : null);
+      } catch {
+        setHistory(null);
+      } finally {
+        setHistoryLoading(false);
+      }
+    }
+
+    fetchHistory();
+  }, [activeExchange, historyRange, symbol]);
+
+  useEffect(() => {
+    async function fetchScreenerScore() {
+      try {
+        const res = await fetch(`/api/screener?symbol=${encodeURIComponent(symbol)}`);
+        const data = await res.json();
+        if (data.status === 'success') {
+          setScreenerScore({
+            passCount: data.passCount,
+            totalChecks: data.totalChecks,
+          });
+        } else {
+          setScreenerScore(null);
+        }
+      } catch {
+        setScreenerScore(null);
+      }
+    }
+
+    fetchScreenerScore();
+  }, [symbol]);
+
+  useEffect(() => {
+    async function fetchNews() {
+      setNewsLoading(true);
+      try {
+        const res = await fetch(`/api/news?symbol=${encodeURIComponent(symbol)}`);
+        const data = await res.json();
+        setNews(data.status === 'success' ? data.news || [] : []);
+      } catch {
+        setNews([]);
+      } finally {
+        setNewsLoading(false);
+      }
+    }
+
+    fetchNews();
+  }, [symbol]);
 
   const activeData = activeExchange === 'NSE' ? nseData : bseData;
   const d = activeData?.data;
@@ -241,6 +316,189 @@ export default function StockDetailPage() {
                   </div>
                 </div>
 
+                <div className="grid grid-cols-2 gap-4 mb-6 lg:grid-cols-4">
+                  <StatCard
+                    label="Market Cap"
+                    value={formatMarketCap(d.market_cap)}
+                    sub={d.sector || 'Sector pending'}
+                    accent="#6366f1"
+                    icon={<Landmark size={16} />}
+                  />
+                  <StatCard
+                    label="P/E Ratio"
+                    value={d.pe_ratio ? `${formatNumber(d.pe_ratio)}x` : 'N/A'}
+                    sub={`Book ${d.book_value ? formatINR(d.book_value) : 'N/A'}`}
+                    accent="#0ea5e9"
+                    icon={<Percent size={16} />}
+                  />
+                  <StatCard
+                    label="Volume"
+                    value={formatVolume(d.volume)}
+                    sub={`Open ${formatINR(d.open)}`}
+                    accent="#22c55e"
+                    icon={<Activity size={16} />}
+                  />
+                  <StatCard
+                    label="52W Move"
+                    value={`${(((d.last_price - d.year_low) / d.year_low) * 100).toFixed(2)}%`}
+                    sub={`High ${formatINR(d.year_high)}`}
+                    trend={((d.last_price - d.year_high) / d.year_high) * 100}
+                    accent="#f97316"
+                    icon={<CandlestickChart size={16} />}
+                  />
+                </div>
+
+                <div className="theme-panel mb-6 rounded-[32px] p-5">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.2em]" style={{ color: '#6b7280' }}>
+                        Events
+                      </p>
+                      <h2 className="mt-1 text-2xl font-black" style={{ color: '#f9fafb' }}>
+                        Earnings and Dividend Calendar
+                      </h2>
+                    </div>
+                    <Link
+                      href={`/reports?symbol=${encodeURIComponent(symbol)}`}
+                      className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium"
+                      style={{ color: '#f9fafb' }}
+                    >
+                      Open report builder
+                    </Link>
+                  </div>
+                  <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                    <EventCard
+                      label="Next Earnings"
+                      value={formatDateLabel(d.next_earnings_date)}
+                      note={d.earnings_average ? `EPS estimate ${d.earnings_average.toFixed(2)}` : 'Estimate unavailable'}
+                    />
+                    <EventCard
+                      label="Earnings Window"
+                      value={formatRangeLabel(d.earnings_date_range)}
+                      note={d.revenue_average ? `Revenue est. ₹${(d.revenue_average / 1e9).toFixed(1)}B` : 'Revenue estimate unavailable'}
+                    />
+                    <EventCard
+                      label="Ex-Dividend"
+                      value={formatDateLabel(d.ex_dividend_date)}
+                      note={d.dividend_yield ? `Yield ${d.dividend_yield.toFixed(2)}%` : 'Yield unavailable'}
+                    />
+                    <EventCard
+                      label="Dividend Date"
+                      value={formatDateLabel(d.dividend_date)}
+                      note={d.long_business_summary ? 'See business snapshot below' : 'Company calendar pending'}
+                    />
+                  </div>
+                </div>
+
+                <div className="theme-panel mb-6 rounded-[32px] p-5">
+                  <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.2em]" style={{ color: '#6b7280' }}>
+                        Price History
+                      </p>
+                      <h2 className="mt-1 text-2xl font-black" style={{ color: '#f9fafb' }}>
+                        Trend and Momentum
+                      </h2>
+                      <p className="mt-2 text-sm" style={{ color: '#9ca3af' }}>
+                        Review how {symbol} has moved across the selected range before making a decision.
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {HISTORY_RANGES.map((value) => (
+                        <button
+                          key={value}
+                          onClick={() => setHistoryRange(value)}
+                          className="rounded-full px-3 py-1.5 text-xs font-semibold transition"
+                          style={{
+                            backgroundColor: historyRange === value ? 'rgba(249,115,22,0.16)' : 'rgba(255,255,255,0.06)',
+                            color: historyRange === value ? '#fdba74' : '#94a3b8',
+                          }}
+                        >
+                          {value}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {historyLoading ? (
+                    <div className="h-[280px] animate-pulse rounded-[24px]" style={{ backgroundColor: 'rgba(255,255,255,0.05)' }} />
+                  ) : history?.bars?.length ? (
+                    <PriceHistoryChart data={history.bars} currency={d.currency || 'INR'} />
+                  ) : (
+                    <div className="flex h-[280px] items-center justify-center rounded-[24px] border border-white/10 bg-white/5 text-sm" style={{ color: '#94a3b8' }}>
+                      Historical data is unavailable for this range.
+                    </div>
+                  )}
+                </div>
+
+                <div className="mb-6">
+                  <AlertManager
+                    symbol={symbol}
+                    currentPrice={d.last_price}
+                    percentChange={d.percent_change}
+                    week52High={d.year_high}
+                    coreScore={screenerScore?.passCount}
+                    totalChecks={screenerScore?.totalChecks ?? 4}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 gap-6 mb-6 lg:grid-cols-[1.15fr_0.85fr]">
+                  <div className="theme-panel rounded-[28px] p-5">
+                    <div className="mb-4">
+                      <p className="text-xs uppercase tracking-[0.2em]" style={{ color: '#6b7280' }}>
+                        Business Snapshot
+                      </p>
+                      <h2 className="mt-1 text-2xl font-black" style={{ color: '#f9fafb' }}>
+                        What the company does
+                      </h2>
+                    </div>
+                    <p className="text-sm leading-7" style={{ color: '#9ca3af' }}>
+                      {d.long_business_summary || 'Business summary is not available for this stock.'}
+                    </p>
+                  </div>
+
+                  <div className="theme-panel rounded-[28px] p-5">
+                    <div className="mb-4">
+                      <p className="text-xs uppercase tracking-[0.2em]" style={{ color: '#6b7280' }}>
+                        News
+                      </p>
+                      <h2 className="mt-1 text-2xl font-black" style={{ color: '#f9fafb' }}>
+                        Latest headlines
+                      </h2>
+                    </div>
+                    {newsLoading ? (
+                      <div className="space-y-3">
+                        {Array.from({ length: 4 }).map((_, index) => (
+                          <div key={index} className="h-14 animate-pulse rounded-2xl" style={{ backgroundColor: 'rgba(255,255,255,0.05)' }} />
+                        ))}
+                      </div>
+                    ) : news.length === 0 ? (
+                      <p className="text-sm" style={{ color: '#9ca3af' }}>
+                        No recent articles were found for this symbol.
+                      </p>
+                    ) : (
+                      <div className="space-y-3">
+                        {news.map((item) => (
+                          <a
+                            key={item.id}
+                            href={item.link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block rounded-2xl border border-white/10 bg-white/5 px-4 py-4 transition hover:border-orange-400/40"
+                          >
+                            <p className="text-sm font-semibold leading-6" style={{ color: '#f9fafb' }}>
+                              {item.title}
+                            </p>
+                            <p className="mt-2 text-xs" style={{ color: '#9ca3af' }}>
+                              {item.publisher} · {formatDateLabel(item.published_at)}
+                            </p>
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 {/* Detail grids */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
                   {/* Trading Info */}
@@ -342,6 +600,46 @@ function DetailSection({
       </div>
     </div>
   );
+}
+
+function EventCard({
+  label,
+  value,
+  note,
+}: {
+  label: string;
+  value: string;
+  note: string;
+}) {
+  return (
+    <div className="rounded-[24px] border border-white/10 bg-white/5 px-4 py-4">
+      <p className="text-xs uppercase tracking-[0.2em]" style={{ color: '#6b7280' }}>
+        {label}
+      </p>
+      <p className="mt-2 text-lg font-bold" style={{ color: '#f9fafb' }}>
+        {value}
+      </p>
+      <p className="mt-2 text-xs" style={{ color: '#9ca3af' }}>
+        {note}
+      </p>
+    </div>
+  );
+}
+
+function formatDateLabel(value?: string) {
+  if (!value) return 'Not available';
+  return new Date(value).toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
+function formatRangeLabel(value?: string) {
+  if (!value) return 'Not available';
+  const [start, end] = value.split('|');
+  if (!start || !end) return formatDateLabel(value);
+  return `${formatDateLabel(start)} - ${formatDateLabel(end)}`;
 }
 
 function StockDetailSkeleton() {

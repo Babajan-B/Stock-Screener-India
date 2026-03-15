@@ -19,6 +19,13 @@ export interface StockData {
   earnings_per_share: number;
   sector: string;
   industry: string;
+  ex_dividend_date?: string;
+  dividend_date?: string;
+  next_earnings_date?: string;
+  earnings_date_range?: string;
+  earnings_average?: number;
+  revenue_average?: number;
+  long_business_summary?: string;
   currency: string;
   last_update: string;
   timestamp: string;
@@ -46,6 +53,8 @@ export interface StockListItem {
   last_price: number;
   change: number;
   percent_change: number;
+  year_high: number;
+  year_low: number;
   volume: number;
   market_cap: number;
   pe_ratio: number;
@@ -91,6 +100,35 @@ export interface SymbolsResponse {
   status: string;
   total_symbols: number;
   symbols: SymbolInfo[];
+}
+
+export interface HistoricalBar {
+  timestamp: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
+export interface HistoricalResponse {
+  status: string;
+  symbol: string;
+  ticker: string;
+  range: '1mo' | '3mo' | '6mo' | '1y' | '5y';
+  interval: '1d' | '1wk';
+  bars: HistoricalBar[];
+  timestamp: string;
+}
+
+export interface NewsItem {
+  id: string;
+  title: string;
+  publisher: string;
+  link: string;
+  published_at: string;
+  related_tickers: string[];
+  thumbnail?: string;
 }
 
 // Popular stocks to show on dashboard

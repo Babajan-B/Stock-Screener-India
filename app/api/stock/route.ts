@@ -11,8 +11,9 @@ export async function GET(req: NextRequest) {
 
   // Normalise: if no exchange suffix, default to NSE (.NS)
   let ticker = symbolRaw.toUpperCase();
-  const exchange = ticker.endsWith('.BO') ? 'BSE' : 'NSE';
-  if (!ticker.endsWith('.NS') && !ticker.endsWith('.BO')) {
+  const isIndex = ticker.startsWith('^');
+  const exchange = isIndex ? 'INDEX' : ticker.endsWith('.BO') ? 'BSE' : 'NSE';
+  if (!isIndex && !ticker.endsWith('.NS') && !ticker.endsWith('.BO')) {
     ticker = `${ticker}.NS`;
   }
 
@@ -22,7 +23,7 @@ export async function GET(req: NextRequest) {
     const [quote, quoteSummary] = await Promise.allSettled([
       yf.quote(ticker),
       yf.quoteSummary(ticker, {
-        modules: ['summaryDetail', 'defaultKeyStatistics', 'assetProfile'],
+        modules: ['summaryDetail', 'defaultKeyStatistics', 'assetProfile', 'calendarEvents'],
       }),
     ]);
 
@@ -44,6 +45,11 @@ export async function GET(req: NextRequest) {
     const ap = quoteSummary.status === 'fulfilled'
       ? (quoteSummary.value?.assetProfile as Record<string, unknown> | undefined)
       : undefined;
+    const ce = quoteSummary.status === 'fulfilled'
+      ? (quoteSummary.value?.calendarEvents as Record<string, unknown> | undefined)
+      : undefined;
+    const earnings = ce?.earnings as Record<string, unknown> | undefined;
+    const earningsDates = (earnings?.earningsDate as Date[] | undefined) ?? [];
 
     const last_price = (q.regularMarketPrice as number) ?? 0;
     const previous_close = (q.regularMarketPreviousClose as number) ?? 0;
@@ -71,6 +77,15 @@ export async function GET(req: NextRequest) {
       earnings_per_share: (q.epsTrailingTwelveMonths as number) ?? 0,
       sector: (ap?.sector as string) ?? '',
       industry: (ap?.industry as string) ?? '',
+      ex_dividend_date: ce?.exDividendDate instanceof Date ? ce.exDividendDate.toISOString() : undefined,
+      dividend_date: ce?.dividendDate instanceof Date ? ce.dividendDate.toISOString() : undefined,
+      next_earnings_date: earningsDates[0] instanceof Date ? earningsDates[0].toISOString() : undefined,
+      earnings_date_range: earningsDates.length >= 2
+        ? `${earningsDates[0].toISOString()}|${earningsDates[1].toISOString()}`
+        : undefined,
+      earnings_average: (earnings?.earningsAverage as number) ?? undefined,
+      revenue_average: (earnings?.revenueAverage as number) ?? undefined,
+      long_business_summary: (ap?.longBusinessSummary as string) ?? '',
       currency: (q.currency as string) ?? 'INR',
       last_update: new Date().toISOString().split('T')[0],
       timestamp: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),

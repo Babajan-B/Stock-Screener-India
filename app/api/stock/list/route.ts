@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
 
   // Build tickers (default NSE)
   const tickers = rawSymbols.map(s =>
-    s.endsWith('.NS') || s.endsWith('.BO') ? s : `${s}.NS`
+    s.startsWith('^') || s.endsWith('.NS') || s.endsWith('.BO') ? s : `${s}.NS`
   );
 
   const results = await Promise.allSettled(
@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
       if (result.status === 'rejected') return null;
       const q = result.value as Record<string, unknown>;
       const ticker = tickers[i];
-      const exchange = ticker.endsWith('.BO') ? 'BSE' : 'NSE';
+      const exchange = ticker.startsWith('^') ? 'INDEX' : ticker.endsWith('.BO') ? 'BSE' : 'NSE';
       const symbol = ticker.replace(/\.(NS|BO)$/, '');
       return {
         symbol,
@@ -35,6 +35,8 @@ export async function GET(req: NextRequest) {
         last_price: (q.regularMarketPrice as number) ?? 0,
         change: (q.regularMarketChange as number) ?? 0,
         percent_change: (q.regularMarketChangePercent as number) ?? 0,
+        year_high: (q.fiftyTwoWeekHigh as number) ?? 0,
+        year_low: (q.fiftyTwoWeekLow as number) ?? 0,
         volume: (q.regularMarketVolume as number) ?? 0,
         market_cap: (q.marketCap as number) ?? 0,
         pe_ratio: (q.trailingPE as number) ?? 0,

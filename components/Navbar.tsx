@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { CandlestickChart, BarChart2, TrendingDown, Briefcase, Trophy, Star } from 'lucide-react';
+import { CandlestickChart, BarChart2, TrendingDown, Briefcase, Trophy, Star, Layers3, ArrowLeftRight, FileText } from 'lucide-react';
 import SearchBar from './SearchBar';
 
 export default function Navbar() {
@@ -30,7 +30,7 @@ export default function Navbar() {
           </div>
 
           {/* Nav links */}
-          <div className="flex items-center gap-1 shrink-0">
+          <div className="flex items-center gap-1 shrink-0 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
             <Link
               href="/"
               className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
@@ -85,6 +85,39 @@ export default function Navbar() {
             >
               <Trophy size={15} />
               <span className="hidden md:inline">Rankings</span>
+            </Link>
+            <Link
+              href="/sectors"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+              style={{
+                backgroundColor: pathname.startsWith('/sectors') ? 'rgba(16,185,129,0.14)' : 'transparent',
+                color: pathname.startsWith('/sectors') ? '#6ee7b7' : '#94a3b8',
+              }}
+            >
+              <Layers3 size={15} />
+              <span className="hidden md:inline">Sectors</span>
+            </Link>
+            <Link
+              href="/compare"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+              style={{
+                backgroundColor: pathname === '/compare' ? 'rgba(14,165,233,0.14)' : 'transparent',
+                color: pathname === '/compare' ? '#7dd3fc' : '#94a3b8',
+              }}
+            >
+              <ArrowLeftRight size={15} />
+              <span className="hidden md:inline">Compare</span>
+            </Link>
+            <Link
+              href="/reports"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+              style={{
+                backgroundColor: pathname === '/reports' ? 'rgba(168,85,247,0.14)' : 'transparent',
+                color: pathname === '/reports' ? '#d8b4fe' : '#94a3b8',
+              }}
+            >
+              <FileText size={15} />
+              <span className="hidden md:inline">Reports</span>
             </Link>
           </div>
         </div>

@@ -3,13 +3,15 @@
 import { useState, useCallback, useRef, useMemo, DragEvent } from 'react';
 import Navbar from '@/components/Navbar';
 import PageHero from '@/components/ui/page-hero';
+import StatCard from '@/components/StatCard';
+import { computePortfolioAnalytics, PortfolioRecommendation } from '@/lib/portfolioAnalytics';
 import {
   Upload, FileText, Download, RefreshCw,
-  CheckCircle2, Briefcase,
+  CheckCircle2, Briefcase, PieChart, ShieldCheck, TrendingUp, TrendingDown,
 } from 'lucide-react';
 
 // ─── types ───────────────────────────────────────────────────────────────────
-type Recommendation = 'Strong Buy' | 'Buy' | 'Hold' | 'Sell';
+type Recommendation = PortfolioRecommendation;
 
 interface PortfolioRow {
   symbol: string;
@@ -31,6 +33,7 @@ interface ScreenerResult {
   week52High: number;
   week52Low: number;
   dropFromHigh: number;
+  sector: string;
   checks: {
     profitGrowth3Y: ScreenerCheck;
     opmStable: ScreenerCheck;
@@ -39,6 +42,8 @@ interface ScreenerResult {
   };
   passCount: number;
   totalChecks: number;
+  advancedPassCount?: number;
+  advancedTotalChecks?: number;
 }
 
 interface PortfolioResult extends PortfolioRow {
@@ -246,6 +251,8 @@ export default function PortfolioPage() {
     };
   }, [results]);
 
+  const analytics = useMemo(() => computePortfolioAnalytics(results), [results]);
+
   // ── sorting ────────────────────────────────────────────────────────────────
   const sorted = useMemo(() => {
     return [...results].sort((a, b) => {
@@ -398,6 +405,125 @@ export default function PortfolioPage() {
         {/* ── RESULTS ── */}
         {results.length > 0 && (
           <>
+            {summary.done > 0 && (
+              <>
+                <div className="grid gap-4 mb-6 sm:grid-cols-2 xl:grid-cols-4">
+                  <StatCard
+                    label="Current Value"
+                    value={analytics.positionsWithQuantity > 0 ? `₹${analytics.currentValue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}` : 'N/A'}
+                    sub={analytics.positionsWithQuantity > 0 ? `${analytics.positionsWithQuantity} qty-based positions` : 'Upload qty data for value totals'}
+                    accent="#6366f1"
+                    icon={<PieChart size={16} />}
+                  />
+                  <StatCard
+                    label="Invested Value"
+                    value={analytics.positionsWithCostBasis > 0 ? `₹${analytics.investedValue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}` : 'N/A'}
+                    sub={analytics.positionsWithCostBasis > 0 ? `${analytics.positionsWithCostBasis} positions with cost basis` : 'Need buy price data'}
+                    accent="#0ea5e9"
+                    icon={<Briefcase size={16} />}
+                  />
+                  <StatCard
+                    label="Unrealized P&L"
+                    value={analytics.positionsWithCostBasis > 0 ? `₹${analytics.unrealizedPnL.toLocaleString('en-IN', { maximumFractionDigits: 0 })}` : 'N/A'}
+                    sub={analytics.unrealizedPnLPct !== null ? `${analytics.unrealizedPnLPct >= 0 ? '+' : ''}${analytics.unrealizedPnLPct.toFixed(2)}% overall` : 'Need buy price data'}
+                    accent={analytics.unrealizedPnL >= 0 ? '#22c55e' : '#ef4444'}
+                    icon={analytics.unrealizedPnL >= 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
+                  />
+                  <StatCard
+                    label="Core Quality"
+                    value={analytics.avgCoreScore !== null ? `${analytics.avgCoreScore.toFixed(0)}%` : 'N/A'}
+                    sub={analytics.avgAdvancedScore !== null ? `Advanced ${analytics.avgAdvancedScore.toFixed(0)}%` : 'Based on analysed holdings'}
+                    accent="#f97316"
+                    icon={<ShieldCheck size={16} />}
+                  />
+                </div>
+
+                <div className="grid gap-6 mb-6 xl:grid-cols-[1.2fr_0.8fr]">
+                  <div className="theme-panel rounded-[28px] p-5">
+                    <div className="mb-4 flex items-center gap-2">
+                      <PieChart size={16} style={{ color: '#f97316' }} />
+                      <h2 className="text-sm font-semibold" style={{ color: '#f9fafb' }}>
+                        Sector Exposure
+                      </h2>
+                    </div>
+                    <p className="text-xs mb-4" style={{ color: '#6b7280' }}>
+                      {analytics.exposureBasis === 'value'
+                        ? 'Exposure is value-weighted because quantity data is available.'
+                        : 'Exposure is position-weighted because quantity data is missing.'}
+                    </p>
+                    <div className="space-y-3">
+                      {analytics.sectorExposure.slice(0, 6).map((sector) => (
+                        <div key={sector.sector}>
+                          <div className="mb-1.5 flex items-center justify-between gap-3 text-sm">
+                            <span style={{ color: '#d1d5db' }}>{sector.sector}</span>
+                            <span style={{ color: '#9ca3af' }}>
+                              {sector.weight.toFixed(1)}% · {sector.positions} position{sector.positions !== 1 ? 's' : ''}
+                            </span>
+                          </div>
+                          <div className="h-2 overflow-hidden rounded-full" style={{ backgroundColor: '#1f2937' }}>
+                            <div
+                              className="h-full rounded-full"
+                              style={{
+                                width: `${Math.min(100, Math.max(0, sector.weight))}%`,
+                                background: 'linear-gradient(90deg, #f97316, #fb7185)',
+                              }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="theme-panel rounded-[28px] p-5">
+                    <div className="mb-4 flex items-center gap-2">
+                      <ShieldCheck size={16} style={{ color: '#f97316' }} />
+                      <h2 className="text-sm font-semibold" style={{ color: '#f9fafb' }}>
+                        Concentration & Signals
+                      </h2>
+                    </div>
+                    <div className="space-y-4">
+                      <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+                        <p className="text-xs" style={{ color: '#6b7280' }}>Top Holding</p>
+                        <p className="mt-1 text-lg font-bold" style={{ color: '#f9fafb' }}>
+                          {analytics.concentration.topHoldingSymbol ?? 'N/A'}
+                        </p>
+                        <p className="text-xs mt-1" style={{ color: '#9ca3af' }}>
+                          {analytics.concentration.topHoldingWeight !== null
+                            ? `${analytics.concentration.topHoldingWeight.toFixed(1)}% of portfolio`
+                            : 'Need quantity data'}
+                        </p>
+                      </div>
+                      <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+                        <p className="text-xs" style={{ color: '#6b7280' }}>Top 3 Holdings</p>
+                        <p className="mt-1 text-lg font-bold" style={{ color: '#f9fafb' }}>
+                          {analytics.concentration.topThreeWeight !== null
+                            ? `${analytics.concentration.topThreeWeight.toFixed(1)}%`
+                            : 'N/A'}
+                        </p>
+                        <p className="text-xs mt-1" style={{ color: '#9ca3af' }}>
+                          Higher concentration means one or two names can dominate returns.
+                        </p>
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+                          <p className="text-xs" style={{ color: '#6b7280' }}>Best Performer</p>
+                          <p className="mt-1 text-lg font-bold" style={{ color: '#22c55e' }}>
+                            {analytics.bestPerformer ? `${analytics.bestPerformer.symbol} ${analytics.bestPerformer.pnlPct >= 0 ? '+' : ''}${analytics.bestPerformer.pnlPct.toFixed(2)}%` : 'N/A'}
+                          </p>
+                        </div>
+                        <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+                          <p className="text-xs" style={{ color: '#6b7280' }}>Worst Performer</p>
+                          <p className="mt-1 text-lg font-bold" style={{ color: '#ef4444' }}>
+                            {analytics.worstPerformer ? `${analytics.worstPerformer.symbol} ${analytics.worstPerformer.pnlPct >= 0 ? '+' : ''}${analytics.worstPerformer.pnlPct.toFixed(2)}%` : 'N/A'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+
             {/* Progress + summary */}
             <div className="theme-panel rounded-[28px] p-5 mb-6">
               <div className="flex items-center justify-between mb-3 flex-wrap gap-3">
