@@ -644,3 +644,191 @@ Since late 2024, Yahoo Finance has reduced the volume of `incomeStatementHistory
 ---
 
 *Built with ❤️ for the Indian retail investor. Not financial advice.*
+
+---
+
+## 15. Developer Route Map
+
+Complete reference of all HTTP endpoints in the application as of the current codebase.
+
+### 15.1 Page Routes
+
+| Route | File | Notes |
+|---|---|---|
+| `/` | `app/page.tsx` | Dashboard — live market overview, stat cards, grid/table toggle |
+| `/stock/[symbol]` | `app/stock/[symbol]/page.tsx` | Stock detail, NSE/BSE tab, price history chart, news feed, alert manager |
+| `/watchlist` | `app/watchlist/page.tsx` | Personal watchlist backed by `localStorage` |
+| `/screener` | `app/screener/page.tsx` | 4-point Dip Analyser with advanced metrics panel |
+| `/portfolio` | `app/portfolio/page.tsx` | Broker CSV upload → portfolio-wide signals + analytics |
+| `/top-screener` | `app/top-screener/page.tsx` | Cap-wise rankings: Large / Mid / Small / Micro |
+| `/compare` | `app/compare/page.tsx` | Side-by-side comparison of up to 4 stocks |
+| `/sectors` | `app/sectors/page.tsx` | Sector index — 6 curated sector cards |
+| `/sectors/[sector]` | `app/sectors/[sector]/page.tsx` | Live sector drill-down with gainer/loser stats |
+| `/reports` | `app/reports/page.tsx` | Printable stock research report generator |
+
+### 15.2 API Routes
+
+| Route | Method | Params | Yahoo Finance calls | Purpose |
+|---|---|---|---|---|
+| `/api/stock` | GET | `symbol` | `quote` + `quoteSummary(summaryDetail, defaultKeyStatistics, assetProfile)` | Full single-stock data |
+| `/api/stock/list` | GET | `symbols` (comma-separated) | `quote` per symbol via `Promise.allSettled` | Batch quotes for dashboard / watchlist |
+| `/api/search` | GET | `q` | `search(q, newsCount:0)` | Autocomplete — NSE/BSE filtered |
+| `/api/symbols` | GET | — | Static | Returns `POPULAR_STOCKS` list |
+| `/api/screener` | GET | `symbol` | `quote` + `quoteSummary(financialData, defaultKeyStatistics, incomeStatementHistory, earningsHistory, majorHoldersBreakdown, assetProfile)` | 4-point + 5 advanced-metric screener |
+| `/api/top-screener` | GET | `cap` | `screenOne()` × pool size | Bulk screener for cap-wise rankings |
+| `/api/compare` | GET | `symbols` (comma-separated, 2–4) | `quote` + `quoteSummary` per symbol | Side-by-side fundamentals comparison |
+| `/api/historical` | GET | `symbol`, `range` (1mo/3mo/6mo/1y/5y) | `historical()` | OHLCV price history for charts |
+| `/api/news` | GET | `symbol` | `search(symbol, newsCount:8)` | Latest news for a stock |
+| `/api/sectors` | GET | `sector?` (optional slug) | `quote` per symbol in sector | Sector list or single sector's live data |
+
+### 15.3 Symbol Normalisation (Applied in Every Route)
+
+```ts
+// Bare symbol → NSE
+if (!ticker.endsWith('.NS') && !ticker.endsWith('.BO')) {
+  ticker = `${ticker}.NS`;
+}
+const exchange = ticker.endsWith('.BO') ? 'BSE' : 'NSE';
+```
+
+### 15.4 Cache-Control Headers
+
+| Route | `s-maxage` | `stale-while-revalidate` |
+|---|---|---|
+| `/api/historical` | 300 s | 600 s |
+| `/api/news` | 300 s | 600 s |
+| `/api/sectors` | 300 s | 600 s |
+| `/api/compare` | 120 s | 300 s |
+| `/api/stock`, `/api/stock/list`, `/api/screener`, `/api/top-screener`, `/api/search`, `/api/symbols` | not set | not set |
+
+---
+
+## 16. Module Dependency Map
+
+```
+app/page.tsx
+  └── /api/stock/list → lib/yf.ts → yahoo-finance2
+  └── components/StockCard.tsx
+  └── components/StockTable.tsx
+  └── components/StatCard.tsx
+
+app/stock/[symbol]/page.tsx
+  └── /api/stock      → lib/yf.ts
+  └── /api/historical → lib/yf.ts
+  └── /api/news       → lib/yf.ts
+  └── /api/screener   → lib/screenerRules.ts → lib/yf.ts
+  └── components/PriceHistoryChart.tsx
+  └── components/AlertManager.tsx
+      └── lib/alertRules.ts
+      └── lib/alertsStorage.ts  (localStorage)
+  └── components/TriggeredAlertsPanel.tsx
+      └── lib/alertRules.ts
+  └── lib/recentlyViewed.ts     (localStorage)
+
+app/screener/page.tsx
+  └── /api/screener   → lib/screenerRules.ts → lib/yf.ts
+  └── /api/search     → lib/yf.ts
+
+app/portfolio/page.tsx
+  └── /api/screener   → lib/screenerRules.ts
+  └── lib/portfolioAnalytics.ts  (pure — no network)
+
+app/top-screener/page.tsx
+  └── /api/top-screener → lib/screenerRules.ts → lib/yf.ts
+                        → lib/capStocks.ts
+
+app/compare/page.tsx
+  └── /api/compare    → lib/screenerRules.ts → lib/yf.ts
+  └── /api/search     → lib/yf.ts
+
+app/sectors/page.tsx
+app/sectors/[sector]/page.tsx
+  └── /api/sectors    → lib/sectorStocks.ts → lib/yf.ts
+
+app/reports/page.tsx
+  └── /api/stock      → lib/yf.ts
+  └── /api/screener   → lib/screenerRules.ts
+  └── /api/news       → lib/yf.ts
+  └── lib/reportBuilder.ts  (pure — no network)
+
+app/watchlist/page.tsx
+  └── /api/stock/list → lib/yf.ts
+  └── /api/stock      → lib/yf.ts (validation)
+  └── localStorage  (stockin_watchlist)
+
+── Shared lib ──────────────────────────────────────────────
+lib/yf.ts               Singleton yahoo-finance2 instance
+lib/types.ts            Shared TS types + POPULAR_STOCKS list
+lib/screenerRules.ts    Core + advanced screener logic (pure function buildScreenerAnalysis)
+lib/capStocks.ts        Large/Mid/Small/Micro stock pools
+lib/sectorStocks.ts     SECTOR_DEFINITIONS + SECTOR_MAP
+lib/alertRules.ts       Alert type definitions + evaluateAlert()
+lib/alertsStorage.ts    localStorage CRUD for StockAlert[] (client-only)
+lib/portfolioAnalytics.ts  Pure portfolio aggregation (P&L, allocation, sector exposure)
+lib/recentlyViewed.ts   localStorage CRUD for recently viewed symbols (client-only)
+lib/reportBuilder.ts    Pure text report builder → markdown / plain text
+
+── Shared components ────────────────────────────────────────
+components/Navbar.tsx           Global nav with SearchBar
+components/SearchBar.tsx        Debounced autocomplete input
+components/StockCard.tsx        Grid card (used on Dashboard + Watchlist)
+components/StockTable.tsx       Sortable table (Dashboard table view)
+components/StatCard.tsx         Headline KPI card (Dashboard stat bar)
+components/PriceHistoryChart.tsx  OHLCV line chart (Stock Detail)
+components/AlertManager.tsx     Alert CRUD panel (Stock Detail)
+components/TriggeredAlertsPanel.tsx  Triggered-alert badge + list (Stock Detail)
+components/SiteFooter.tsx       Global footer
+components/ui/                  Reusable primitive UI components
+```
+
+---
+
+## 17. Production Readiness Assessment
+
+> **Verdict as of 2026-03-27:** The application is suitable for **personal use and small-group demo deployment** on Vercel. It is **not yet hardened for public multi-user deployment** due to the blockers listed below.
+
+### 17.1 Priority 1 — Must Fix Before Public Launch
+
+| # | Blocker | Risk | Recommended Fix |
+|---|---|---|---|
+| P1-A | **No rate limiting on any API route** | Anyone can flood `/api/top-screener` with requests, exhausting Yahoo Finance quota and running up Vercel function invocations | Add per-IP sliding-window rate limiter via `lib/rateLimiter.ts` (in-memory for single-region; Upstash Redis for multi-region) |
+| P1-B | **Input not sanitised on search + screener routes** | Malformed or excessively long symbol strings are passed straight to `yahoo-finance2`, which may throw unhandled exceptions or log noise | Add `MAX_SYMBOL_LENGTH` guard + strip non-alphanumeric (except `.`, `-`, `^`) before any `yf.*` call |
+| P1-C | **No `Cache-Control` headers on high-traffic routes** | `/api/screener`, `/api/stock`, and `/api/stock/list` have no CDN caching. Every client triggers a live Yahoo Finance call | Add `s-maxage=60, stale-while-revalidate=120` to screener; `s-maxage=30` to stock/list |
+| P1-D | **Alert evaluation runs client-side in browser only** | Alerts are never checked when the tab is closed — this is by design today, but misleads users who expect background notifications | Document this limitation clearly in the UI |
+| P1-E | **`localStorage` as only persistence layer** | Data is siloed per browser. Private/incognito mode, clearing browser data, or switching devices wipes everything | Acceptable for v1 if explicitly communicated. Server-side persistence (Supabase / PlanetScale) needed for real users |
+
+### 17.2 Priority 2 — Should Fix Before Scaling
+
+| # | Issue | Impact | Fix |
+|---|---|---|---|
+| P2-A | No automated tests (unit or integration) | Regressions go undetected; screener logic changes are risky | Add Vitest unit tests for `screenerRules.ts`, `portfolioAnalytics.ts`, and `reportBuilder.ts` — these are pure functions, easy to test |
+| P2-B | `/api/top-screener` has no per-cap result cache | Running all 4 tabs consecutively fires 125+ Yahoo Finance calls in ~30 s | Cache top-screener results server-side (KV store or `@vercel/kv`) with a 10-minute TTL |
+| P2-C | Error responses lack consistent shape | Some routes return `{ status, message }`, others throw raw exceptions | Standardise all error responses; add a global error boundary in the layout |
+| P2-D | `vercel.json` `maxDuration: 30` applies to all functions | Short routes (`/api/search`, `/api/symbols`) don't need 30 s; they inflate billing on timeouts | Scope `maxDuration` only to `/api/top-screener` and `/api/compare` |
+
+### 17.3 Priority 3 — Nice-to-Have for v2
+
+| # | Enhancement |
+|---|---|
+| P3-A | Add OpenTelemetry / Vercel Analytics for function latency tracking |
+| P3-B | CSRF protection on any future POST/mutation routes |
+| P3-C | User authentication (NextAuth + GitHub or Google) for cloud watchlist/alerts |
+| P3-D | Backtest endpoint — did 4/4 screener stocks recover after 30%+ dip? |
+| P3-E | PWA manifest + service worker for offline support |
+| P3-F | Internationalisation scaffolding (English + Hindi initial targets) |
+
+### 17.4 Security Posture
+
+| Area | Status | Notes |
+|---|---|---|
+| Secrets / API keys | ✅ None required | All data via `yahoo-finance2`; no keys to leak |
+| XSS | ✅ Mitigated | React escapes all dynamic content by default; no `dangerouslySetInnerHTML` |
+| SQL injection | ✅ N/A | No database |
+| CSRF | ⚠️ Partial | All current routes are `GET`-only — no CSRF risk. Add tokens if POST routes are added |
+| Input validation | ⚠️ Minimal | Symbol strings are used directly after basic `.toUpperCase()` — see P1-B |
+| Rate limiting | ❌ None | See P1-A |
+| Dependency vulnerabilities | ⚠️ Unchecked | Run `npm audit` before each deploy |
+
+---
+
+*Documentation last updated: 2026-03-27*

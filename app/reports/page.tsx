@@ -4,9 +4,10 @@ import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import PageHero from '@/components/ui/page-hero';
+import ShareModal from '@/components/ShareModal';
 import { buildStockResearchReport } from '@/lib/reportBuilder';
 import { NewsItem, StockResponse } from '@/lib/types';
-import { Download, FileText, Copy } from 'lucide-react';
+import { Download, FileText, Copy, Share2 } from 'lucide-react';
 
 const REPORT_PRESETS = ['RELIANCE', 'TCS', 'HDFCBANK', 'INFY'];
 
@@ -42,6 +43,7 @@ function ReportsPageContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
 
   const loadReport = async (nextSymbol: string) => {
     const cleaned = nextSymbol.trim().toUpperCase().replace(/\.(NS|BO)$/i, '');
@@ -162,6 +164,15 @@ function ReportsPageContent() {
               <Download size={14} />
               Download
             </button>
+            <button
+              onClick={() => setShareModalOpen(true)}
+              disabled={!reportText}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium"
+              style={{ color: '#f97316', backgroundColor: 'rgba(249,115,22,0.12)', borderColor: 'rgba(249,115,22,0.3)', opacity: reportText ? 1 : 0.5 }}
+            >
+              <Share2 size={14} />
+              Share
+            </button>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
             {REPORT_PRESETS.map((preset) => (
@@ -209,6 +220,16 @@ function ReportsPageContent() {
           )}
         </div>
       </main>
+
+      <ShareModal
+        isOpen={shareModalOpen}
+        onClose={() => setShareModalOpen(false)}
+        caption={
+          stock && screener
+            ? `${symbol} Research Report: Price ₹${stock.data.last_price} | Screener Score ${screener.passCount}/${screener.totalChecks} | ${stock.data.company_name}`
+            : `${symbol} Research Report`
+        }
+      />
     </div>
   );
 }

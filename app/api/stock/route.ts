@@ -1,16 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { yf } from '@/lib/yf';
+import { checkRateLimit, rateLimitResponse } from '@/lib/rateLimiter';
+import { sanitizeSymbol } from '@/lib/sanitize';
+import { cached } from '@/lib/serverCache';
 
 export async function GET(req: NextRequest) {
+  const rl = checkRateLimit(req, { limit: 30, windowMs: 60_000, routeId: 'stock' });
+  if (!rl.allowed) return rateLimitResponse(rl);
+
   const { searchParams } = new URL(req.url);
-  const symbolRaw = searchParams.get('symbol') || '';
+  const symbolRaw = sanitizeSymbol(searchParams.get('symbol'));
 
   if (!symbolRaw) {
     return NextResponse.json({ status: 'error', message: 'symbol is required' }, { status: 400 });
   }
 
   // Normalise: if no exchange suffix, default to NSE (.NS)
-  let ticker = symbolRaw.toUpperCase();
+  let ticker = symbolRaw;
   const isIndex = ticker.startsWith('^');
   const exchange = isIndex ? 'INDEX' : ticker.endsWith('.BO') ? 'BSE' : 'NSE';
   if (!isIndex && !ticker.endsWith('.NS') && !ticker.endsWith('.BO')) {
@@ -20,34 +26,32 @@ export async function GET(req: NextRequest) {
   const symbol = ticker.replace(/\.(NS|BO)$/, '');
 
   try {
-    const [quote, quoteSummary] = await Promise.allSettled([
-      yf.quote(ticker),
-      yf.quoteSummary(ticker, {
-        modules: ['summaryDetail', 'defaultKeyStatistics', 'assetProfile', 'calendarEvents'],
-      }),
-    ]);
+    const { value: fetched, state } = await cached(
+      `stock:${ticker}`,
+      { ttlMs: 30_000, staleMs: 5 * 60_000 },
+      async () => {
+        const [quote, quoteSummary] = await Promise.allSettled([
+          yf.quote(ticker),
+          yf.quoteSummary(ticker, {
+            modules: ['summaryDetail', 'defaultKeyStatistics', 'assetProfile', 'calendarEvents'],
+          }),
+        ]);
+        if (quote.status === 'rejected') {
+          throw Object.assign(new Error('not found'), { notFound: true });
+        }
+        return {
+          quote: quote.value,
+          summary: quoteSummary.status === 'fulfilled' ? quoteSummary.value : undefined,
+        };
+      }
+    );
 
-    if (quote.status === 'rejected') {
-      return NextResponse.json({
-        status: 'error',
-        message: `No data found for symbol: ${ticker}. Stock may not exist or market is closed.`,
-        hint: `Try the other exchange: ${symbol}.${exchange === 'NSE' ? 'BO' : 'NS'}`,
-      }, { status: 404 });
-    }
-
-    const q = quote.value as Record<string, unknown>;
-    const sd = quoteSummary.status === 'fulfilled'
-      ? (quoteSummary.value?.summaryDetail as Record<string, unknown> | undefined)
-      : undefined;
-    const ks = quoteSummary.status === 'fulfilled'
-      ? (quoteSummary.value?.defaultKeyStatistics as Record<string, unknown> | undefined)
-      : undefined;
-    const ap = quoteSummary.status === 'fulfilled'
-      ? (quoteSummary.value?.assetProfile as Record<string, unknown> | undefined)
-      : undefined;
-    const ce = quoteSummary.status === 'fulfilled'
-      ? (quoteSummary.value?.calendarEvents as Record<string, unknown> | undefined)
-      : undefined;
+    const quoteSummary = fetched.summary;
+    const q = fetched.quote as Record<string, unknown>;
+    const sd = quoteSummary?.summaryDetail as Record<string, unknown> | undefined;
+    const ks = quoteSummary?.defaultKeyStatistics as Record<string, unknown> | undefined;
+    const ap = quoteSummary?.assetProfile as Record<string, unknown> | undefined;
+    const ce = quoteSummary?.calendarEvents as Record<string, unknown> | undefined;
     const earnings = ce?.earnings as Record<string, unknown> | undefined;
     const earningsDates = (earnings?.earningsDate as Date[] | undefined) ?? [];
 
@@ -104,10 +108,17 @@ export async function GET(req: NextRequest) {
         api_url: `/api/stock?symbol=${symbol}.${exchange === 'NSE' ? 'BO' : 'NS'}`,
       },
     }, {
-      headers: { 'Cache-Control': 's-maxage=30, stale-while-revalidate=60' },
+      headers: { 'Cache-Control': 's-maxage=30, stale-while-revalidate=60', 'X-Cache': state },
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
+    if (err && typeof err === 'object' && 'notFound' in err) {
+      return NextResponse.json({
+        status: 'error',
+        message: `No data found for symbol: ${ticker}. Stock may not exist or market is closed.`,
+        hint: `Try the other exchange: ${symbol}.${exchange === 'NSE' ? 'BO' : 'NS'}`,
+      }, { status: 404 });
+    }
     return NextResponse.json({
       status: 'error',
       message: `Failed to fetch data for ${ticker}: ${message}`,

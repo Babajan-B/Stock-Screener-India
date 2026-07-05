@@ -7,6 +7,7 @@ import Navbar from '@/components/Navbar';
 import StatCard from '@/components/StatCard';
 import PriceHistoryChart from '@/components/PriceHistoryChart';
 import AlertManager from '@/components/AlertManager';
+import ShareModal from '@/components/ShareModal';
 import {
   StockResponse,
   HistoricalResponse,
@@ -19,7 +20,7 @@ import {
 } from '@/lib/types';
 import { pushRecentlyViewed } from '@/lib/recentlyViewed';
 import {
-  TrendingUp, TrendingDown, RefreshCw, ArrowLeft,
+  TrendingUp, TrendingDown, RefreshCw, ArrowLeft, Share2,
   Building2, DollarSign, Activity, BarChart3,
   Calendar, Layers, Zap, CandlestickChart, Landmark, Percent
 } from 'lucide-react';
@@ -44,6 +45,7 @@ export default function StockDetailPage() {
   const [screenerScore, setScreenerScore] = useState<{ passCount: number; totalChecks: number } | null>(null);
   const [news, setNews] = useState<NewsItem[]>([]);
   const [newsLoading, setNewsLoading] = useState(true);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
 
   const fetchData = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -219,6 +221,14 @@ export default function StockDetailPage() {
                 >
                   <RefreshCw size={13} className={refreshing ? 'animate-spin' : ''} />
                   Refresh
+                </button>
+                <button
+                  onClick={() => setShareModalOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all"
+                  style={{ backgroundColor: 'rgba(249,115,22,0.12)', border: '1px solid rgba(249,115,22,0.3)', color: '#f97316' }}
+                >
+                  <Share2 size={13} />
+                  Share
                 </button>
               </div>
             </div>
@@ -569,6 +579,16 @@ export default function StockDetailPage() {
           </>
         )}
       </main>
+
+      <ShareModal
+        isOpen={shareModalOpen}
+        onClose={() => setShareModalOpen(false)}
+        caption={
+          d
+            ? `${symbol} - ₹${d.last_price.toFixed(2)} (${d.percent_change > 0 ? '+' : ''}${d.percent_change.toFixed(2)}%) | Screener: ${screenerScore ? `${screenerScore.passCount}/${screenerScore.totalChecks}` : 'N/A'} | ${d.company_name}`
+            : `${symbol}`
+        }
+      />
     </div>
   );
 }

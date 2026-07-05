@@ -1,18 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { yf } from '@/lib/yf';
+import { checkRateLimit, rateLimitResponse } from '@/lib/rateLimiter';
+import { sanitizeQuery } from '@/lib/sanitize';
+import { cached } from '@/lib/serverCache';
 
 export async function GET(req: NextRequest) {
+  const rl = checkRateLimit(req, { limit: 60, windowMs: 60_000, routeId: 'search' });
+  if (!rl.allowed) return rateLimitResponse(rl);
+
   const { searchParams } = new URL(req.url);
-  const q = searchParams.get('q');
+  const q = sanitizeQuery(searchParams.get('q'));
 
   if (!q) {
     return NextResponse.json({ status: 'error', message: 'q is required' }, { status: 400 });
   }
 
   try {
-    const results = await yf.search(q, { newsCount: 0 });
-
-    const quotes = (results.quotes ?? [])
+    const { value: quotes, state } = await cached(
+      `search:${q.toLowerCase()}`,
+      { ttlMs: 10 * 60_000, staleMs: 60 * 60_000 },
+      async () => {
+        const results = await yf.search(q, { newsCount: 0 });
+        return (results.quotes ?? [])
       .filter((r: Record<string, unknown>) =>
         (r.exchange === 'NSE' || r.exchange === 'BSI' || r.exchange === 'BSE' ||
           String(r.symbol).endsWith('.NS') || String(r.symbol).endsWith('.BO'))
@@ -32,6 +41,8 @@ export async function GET(req: NextRequest) {
           bse_url: `/api/stock?symbol=${symbol}.BO`,
         };
       });
+      }
+    );
 
     return NextResponse.json({
       status: 'success',
@@ -39,6 +50,8 @@ export async function GET(req: NextRequest) {
       total_results: quotes.length,
       results: quotes,
       timestamp: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
+    }, {
+      headers: { 'Cache-Control': 's-maxage=60, stale-while-revalidate=300', 'X-Cache': state },
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);

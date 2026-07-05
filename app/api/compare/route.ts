@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { yf } from '@/lib/yf';
 import { buildScreenerAnalysis } from '@/lib/screenerRules';
+import { checkRateLimit, rateLimitResponse } from '@/lib/rateLimiter';
+import { sanitizeSymbolList } from '@/lib/sanitize';
+import { cached } from '@/lib/serverCache';
 
 export async function GET(req: NextRequest) {
+  const rl = checkRateLimit(req, { limit: 10, windowMs: 60_000, routeId: 'compare' });
+  if (!rl.allowed) return rateLimitResponse(rl);
+
   const { searchParams } = new URL(req.url);
   const symbolsParam = searchParams.get('symbols');
 
@@ -10,18 +16,17 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ status: 'error', message: 'symbols is required' }, { status: 400 });
   }
 
-  const symbols = symbolsParam
-    .split(',')
-    .map((symbol) => symbol.trim().toUpperCase().replace(/\.(NS|BO)$/i, ''))
-    .filter(Boolean)
-    .slice(0, 4);
+  const symbols = sanitizeSymbolList(symbolsParam, 4);
 
   if (symbols.length < 2) {
     return NextResponse.json({ status: 'error', message: 'Provide at least two symbols' }, { status: 400 });
   }
 
-  const results = await Promise.all(
-    symbols.map(async (symbol) => {
+  const { value: results, state } = await cached(
+    `compare:${symbols.join(',')}`,
+    { ttlMs: 2 * 60_000, staleMs: 15 * 60_000 },
+    () => Promise.all(
+      symbols.map(async (symbol) => {
       const ticker = `${symbol}.NS`;
       const [quote, summary] = await Promise.all([
         yf.quote(ticker),
@@ -74,7 +79,8 @@ export async function GET(req: NextRequest) {
         advancedPassCount: analysis.advancedPassCount,
         advancedTotalChecks: analysis.advancedTotalChecks,
       };
-    })
+      })
+    )
   );
 
   return NextResponse.json({
@@ -83,6 +89,6 @@ export async function GET(req: NextRequest) {
     results,
     timestamp: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
   }, {
-    headers: { 'Cache-Control': 's-maxage=120, stale-while-revalidate=300' },
+    headers: { 'Cache-Control': 's-maxage=120, stale-while-revalidate=300', 'X-Cache': state },
   });
 }

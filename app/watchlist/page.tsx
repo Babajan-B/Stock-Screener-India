@@ -6,9 +6,10 @@ import PageHero from '@/components/ui/page-hero';
 import StockCard, { StockCardSkeleton } from '@/components/StockCard';
 import TriggeredAlertsPanel from '@/components/TriggeredAlertsPanel';
 import StatCard from '@/components/StatCard';
+import ShareModal from '@/components/ShareModal';
 import { readAlerts } from '@/lib/alertsStorage';
 import { StockListItem } from '@/lib/types';
-import { Star, Plus, X, RefreshCw, BookMarked, TrendingUp, TrendingDown, Activity } from 'lucide-react';
+import { Star, Plus, X, RefreshCw, BookMarked, TrendingUp, TrendingDown, Activity, Share2 } from 'lucide-react';
 
 const DEFAULT_WATCHLIST = ['RELIANCE', 'TCS', 'HDFCBANK', 'INFY', 'ITC', 'SBIN'];
 const STORAGE_KEY = 'stockin_watchlist';
@@ -43,6 +44,7 @@ export default function WatchlistPage() {
   const [sortKey, setSortKey] = useState<'symbol' | 'percent_change' | 'market_cap' | 'last_price'>('percent_change');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [coreScores, setCoreScores] = useState<Record<string, { passCount: number; totalChecks: number }>>({});
+  const [shareModalOpen, setShareModalOpen] = useState(false);
 
   useEffect(() => {
     setWatchlist(loadWatchlist());
@@ -223,6 +225,12 @@ export default function WatchlistPage() {
               onClick: () => fetchStocks(watchlist, true),
               icon: <RefreshCw size={15} className={refreshing ? 'animate-spin' : ''} />,
               disabled: refreshing || !watchlist.length,
+            },
+            {
+              label: 'Share Watchlist',
+              onClick: () => setShareModalOpen(true),
+              icon: <Share2 size={15} />,
+              disabled: !watchlist.length,
             },
             {
               label: 'Open screener',
@@ -437,6 +445,16 @@ export default function WatchlistPage() {
           </div>
         )}
       </main>
+
+      <ShareModal
+        isOpen={shareModalOpen}
+        onClose={() => setShareModalOpen(false)}
+        caption={
+          stocks.length > 0
+            ? `My Watchlist: ${stocks.map(s => `${s.symbol} ₹${s.last_price} (${s.percent_change > 0 ? '+' : ''}${s.percent_change.toFixed(2)}%)`).join(' | ')}`
+            : `My Watchlist - Tracking ${watchlist.length} stocks`
+        }
+      />
     </div>
   );
 }

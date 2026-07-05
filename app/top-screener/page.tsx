@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import Navbar from '@/components/Navbar';
 import PageHero from '@/components/ui/page-hero';
-import { RefreshCw, Trophy, TrendingDown, ChevronDown, ChevronUp } from 'lucide-react';
+import ShareModal from '@/components/ShareModal';
+import { RefreshCw, Trophy, TrendingDown, ChevronDown, ChevronUp, Share2 } from 'lucide-react';
 
 // ─── types ────────────────────────────────────────────────────────────────────
 interface CheckResult {
@@ -56,6 +57,7 @@ export default function TopScreenerPage() {
   const [cache, setCache]             = useState<Partial<Record<Cap, RankedStock[]>>>({});
   const [loading, setLoading]         = useState(false);
   const [lastFetched, setLastFetched] = useState<Partial<Record<Cap, number>>>({});
+  const [shareModalOpen, setShareModalOpen] = useState(false);
   const [expanded, setExpanded]       = useState<string | null>(null);
 
   const capMeta = CAPS.find(c => c.key === activeCap)!;
@@ -98,6 +100,12 @@ export default function TopScreenerPage() {
               onClick: () => fetchCap(activeCap, true),
               icon: <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />,
               disabled: loading,
+            },
+            {
+              label: 'Share Rankings',
+              onClick: () => setShareModalOpen(true),
+              icon: <Share2 size={14} />,
+              disabled: cache[activeCap]?.length === 0,
             },
             {
               label: 'Open screener',
@@ -311,6 +319,16 @@ export default function TopScreenerPage() {
           </>
         )}
       </main>
+
+      <ShareModal
+        isOpen={shareModalOpen}
+        onClose={() => setShareModalOpen(false)}
+        caption={
+          cache[activeCap] && cache[activeCap]!.length > 0
+            ? `Top ${Math.min(5, cache[activeCap]!.length)} ${capMeta.label} stocks by screener: ${cache[activeCap]!.slice(0, 5).map((s, i) => `${i + 1}. ${s.symbol} (${s.passCount}/${s.totalChecks})`).join(' | ')}`
+            : `Top ${capMeta.label} stocks - Screener Rankings`
+        }
+      />
     </div>
   );
 }

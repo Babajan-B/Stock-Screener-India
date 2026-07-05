@@ -1,38 +1,60 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { yf } from '@/lib/yf';
+import { yf, batchQuotes } from '@/lib/yf';
 import { buildScreenerAnalysis } from '@/lib/screenerRules';
+import { checkRateLimit, rateLimitResponse } from '@/lib/rateLimiter';
+import { cached, mapConcurrent } from '@/lib/serverCache';
 
-async function screenOne(symbol: string) {
-  const ticker = symbol.includes('.') ? symbol : `${symbol}.NS`;
+const SUMMARY_MODULES = [
+  'financialData',
+  'defaultKeyStatistics',
+  'incomeStatementHistory',
+  'earningsHistory',
+  'majorHoldersBreakdown',
+  'assetProfile',
+] as never;
 
-  try {
-    const [quote, summary] = await Promise.all([
-      yf.quote(ticker),
-      yf.quoteSummary(ticker, {
-        modules: [
-          'financialData',
-          'defaultKeyStatistics',
-          'incomeStatementHistory',
-          'earningsHistory',
-          'majorHoldersBreakdown',
-          'assetProfile',
-        ] as never,
-      }),
-    ]);
+async function computeCap(symbols: string[]) {
+  const tickers = symbols.map((s) => (s.includes('.') ? s : `${s}.NS`));
 
-    return buildScreenerAnalysis({
-      symbol,
-      ticker,
-      exchange: ticker.endsWith('.BO') ? 'BSE' : 'NSE',
-      quote: quote as Record<string, unknown>,
-      summary: summary as Record<string, unknown>,
-    });
-  } catch {
-    return null;
-  }
+  // All quotes in one Yahoo request; summaries fanned out with bounded concurrency.
+  const quotes = await batchQuotes(tickers);
+
+  const results = await mapConcurrent(symbols, 8, async (symbol, i) => {
+    const ticker = tickers[i];
+    const quote = quotes.get(ticker);
+    if (!quote) return null;
+    try {
+      const summary = await yf.quoteSummary(ticker, { modules: SUMMARY_MODULES });
+      return buildScreenerAnalysis({
+        symbol,
+        ticker,
+        exchange: ticker.endsWith('.BO') ? 'BSE' : 'NSE',
+        quote,
+        summary: summary as Record<string, unknown>,
+      });
+    } catch {
+      return null;
+    }
+  });
+
+  return results
+    .filter((item): item is NonNullable<(typeof results)[number]> => item !== null)
+    .sort((a, b) => {
+      const core = b.passCount - a.passCount;
+      if (core !== 0) return core;
+
+      const advanced = b.advancedPassCount - a.advancedPassCount;
+      if (advanced !== 0) return advanced;
+
+      return Math.abs(b.dropFromHigh) - Math.abs(a.dropFromHigh);
+    })
+    .slice(0, 20);
 }
 
 export async function GET(req: NextRequest) {
+  const rl = checkRateLimit(req, { limit: 10, windowMs: 60_000, routeId: 'top-screener' });
+  if (!rl.allowed) return rateLimitResponse(rl);
+
   const cap = req.nextUrl.searchParams.get('cap') ?? 'large';
 
   const { LARGE_CAP, MID_CAP, SMALL_CAP, MICRO_CAP } = await import('@/lib/capStocks');
@@ -44,28 +66,20 @@ export async function GET(req: NextRequest) {
   };
   const symbols = pool[cap] ?? LARGE_CAP;
 
-  const BATCH = 5;
-  const results: Array<Awaited<ReturnType<typeof screenOne>>> = [];
-  for (let i = 0; i < symbols.length; i += BATCH) {
-    const batch = await Promise.all(symbols.slice(i, i + BATCH).map(screenOne));
-    results.push(...batch);
-  }
+  const { value, state, ageMs } = await cached(
+    `top-screener:${cap}`,
+    { ttlMs: 10 * 60_000, staleMs: 60 * 60_000 },
+    () => computeCap(symbols)
+  );
 
-  const sorted = results
-    .filter((item): item is NonNullable<Awaited<ReturnType<typeof screenOne>>> => item !== null)
-    .sort((a, b) => {
-      const core = b.passCount - a.passCount;
-      if (core !== 0) return core;
-
-      const advanced = b.advancedPassCount - a.advancedPassCount;
-      if (advanced !== 0) return advanced;
-
-      return Math.abs(b.dropFromHigh) - Math.abs(a.dropFromHigh);
-    });
-
-  return NextResponse.json({
-    status: 'success',
-    cap,
-    results: sorted.slice(0, 20),
-  });
+  return NextResponse.json(
+    { status: 'success', cap, results: value },
+    {
+      headers: {
+        'Cache-Control': 's-maxage=600, stale-while-revalidate=3600',
+        'X-Cache': state,
+        'X-Cache-Age': String(Math.round(ageMs / 1000)),
+      },
+    }
+  );
 }

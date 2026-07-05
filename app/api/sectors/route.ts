@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { yf } from '@/lib/yf';
+import { batchQuotes } from '@/lib/yf';
 import { SECTOR_DEFINITIONS, SECTOR_MAP } from '@/lib/sectorStocks';
+import { checkRateLimit, rateLimitResponse } from '@/lib/rateLimiter';
+import { cached } from '@/lib/serverCache';
 
 function buildStockItem(symbol: string, quote: Record<string, unknown>, fallbackSector: string) {
   return {
@@ -21,6 +23,9 @@ function buildStockItem(symbol: string, quote: Record<string, unknown>, fallback
 }
 
 export async function GET(req: NextRequest) {
+  const rl = checkRateLimit(req, { limit: 20, windowMs: 60_000, routeId: 'sectors' });
+  if (!rl.allowed) return rateLimitResponse(rl);
+
   const { searchParams } = new URL(req.url);
   const sectorParam = searchParams.get('sector');
 
@@ -42,17 +47,19 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ status: 'error', message: 'Unknown sector' }, { status: 404 });
   }
 
-  const results = await Promise.allSettled(
-    sector.symbols.map((symbol) => yf.quote(`${symbol}.NS`))
+  const { value: stocks, state } = await cached(
+    `sector:${sector.slug}`,
+    { ttlMs: 2 * 60_000, staleMs: 15 * 60_000 },
+    async () => {
+      const quotes = await batchQuotes(sector.symbols.map((s) => `${s}.NS`));
+      return sector.symbols
+        .map((symbol) => {
+          const quote = quotes.get(`${symbol}.NS`);
+          return quote ? buildStockItem(symbol, quote, sector.name) : null;
+        })
+        .filter((stock): stock is ReturnType<typeof buildStockItem> => stock !== null);
+    }
   );
-
-  const stocks = results
-    .map((result, index) => {
-      if (result.status === 'rejected') return null;
-      const symbol = sector.symbols[index];
-      return buildStockItem(symbol, result.value as Record<string, unknown>, sector.name);
-    })
-    .filter((stock): stock is ReturnType<typeof buildStockItem> => stock !== null);
 
   const gainers = stocks.filter((stock) => stock.percent_change > 0).length;
   const losers = stocks.filter((stock) => stock.percent_change < 0).length;
@@ -83,6 +90,6 @@ export async function GET(req: NextRequest) {
     },
     timestamp: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
   }, {
-    headers: { 'Cache-Control': 's-maxage=300, stale-while-revalidate=600' },
+    headers: { 'Cache-Control': 's-maxage=300, stale-while-revalidate=600', 'X-Cache': state },
   });
 }

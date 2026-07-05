@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { yf } from '@/lib/yf';
+import { checkRateLimit, rateLimitResponse } from '@/lib/rateLimiter';
+import { sanitizeSymbol } from '@/lib/sanitize';
+import { cached } from '@/lib/serverCache';
 
 const RANGE_CONFIG = {
   '1mo': { days: 30, interval: '1d' as const },
@@ -25,8 +28,11 @@ function normalizeTicker(symbolRaw: string) {
 }
 
 export async function GET(req: NextRequest) {
+  const rl = checkRateLimit(req, { limit: 30, windowMs: 60_000, routeId: 'historical' });
+  if (!rl.allowed) return rateLimitResponse(rl);
+
   const { searchParams } = new URL(req.url);
-  const symbolRaw = searchParams.get('symbol') || '';
+  const symbolRaw = sanitizeSymbol(searchParams.get('symbol'));
   const range = (searchParams.get('range') || '6mo') as HistoryRange;
 
   if (!symbolRaw) {
@@ -43,22 +49,27 @@ export async function GET(req: NextRequest) {
   const period1 = new Date(period2.getTime() - config.days * 24 * 60 * 60 * 1000);
 
   try {
-    const history = await yf.historical(ticker, {
-      period1,
-      period2,
-      interval: config.interval,
-    });
-
-    const bars = history
-      .filter((row) => typeof row.close === 'number')
-      .map((row) => ({
-        timestamp: row.date.toISOString(),
-        open: Number(row.open ?? 0),
-        high: Number(row.high ?? 0),
-        low: Number(row.low ?? 0),
-        close: Number(row.close ?? 0),
-        volume: Number(row.volume ?? 0),
-      }));
+    const { value: bars, state } = await cached(
+      `historical:${ticker}:${range}`,
+      { ttlMs: 5 * 60_000, staleMs: 60 * 60_000 },
+      async () => {
+        const history = await yf.historical(ticker, {
+          period1,
+          period2,
+          interval: config.interval,
+        });
+        return history
+          .filter((row) => typeof row.close === 'number')
+          .map((row) => ({
+            timestamp: row.date.toISOString(),
+            open: Number(row.open ?? 0),
+            high: Number(row.high ?? 0),
+            low: Number(row.low ?? 0),
+            close: Number(row.close ?? 0),
+            volume: Number(row.volume ?? 0),
+          }));
+      }
+    );
 
     return NextResponse.json({
       status: 'success',
@@ -69,7 +80,7 @@ export async function GET(req: NextRequest) {
       bars,
       timestamp: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
     }, {
-      headers: { 'Cache-Control': 's-maxage=300, stale-while-revalidate=600' },
+      headers: { 'Cache-Control': 's-maxage=300, stale-while-revalidate=600', 'X-Cache': state },
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);

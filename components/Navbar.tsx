@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { CandlestickChart, BarChart2, TrendingDown, Briefcase, Trophy, Star, Layers3, ArrowLeftRight, FileText } from 'lucide-react';
+import { CandlestickChart, BarChart2, TrendingDown, Briefcase, Trophy, Star, Layers3, ArrowLeftRight, FileText, Settings } from 'lucide-react';
 import SearchBar from './SearchBar';
 
 export default function Navbar() {
@@ -118,6 +118,18 @@ export default function Navbar() {
             >
               <FileText size={15} />
               <span className="hidden md:inline">Reports</span>
+            </Link>
+            <Link
+              href="/settings/social"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+              style={{
+                backgroundColor: pathname.startsWith('/settings') ? 'rgba(107,114,128,0.14)' : 'transparent',
+                color: pathname.startsWith('/settings') ? '#d1d5db' : '#94a3b8',
+              }}
+              title="Social publishing settings"
+            >
+              <Settings size={15} />
+              <span className="hidden md:inline">Social</span>
             </Link>
           </div>
         </div>
